@@ -1,5 +1,10 @@
-const STORAGE_KEY = "groziolaikas-demo-v4";
+const STORAGE_KEY = "groziolaikas-demo-v5";
+const BACKEND_BASE_URL = "http://localhost:8787/api";
+const BACKEND_TIMEOUT_MS = 4000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_BOOKING_LEAD_TIME_MINUTES = 120;
+const DEFAULT_BOOKING_BUFFER_MINUTES = 15;
+const DEFAULT_BOOKING_CHANGE_NOTICE_MINUTES = 12 * 60;
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -9,16 +14,22 @@ const upcomingDates = Array.from({ length: 6 }, (_, index) => {
   return toIsoDate(date);
 });
 
-const profiles = {
-  customer: {
+const seedCustomerAccounts = [
+  {
     id: "customer-monika",
     role: "customer",
     name: "Monika Petrauske",
     email: "monika@groziolaikas.demo",
     phone: "+37061234567",
+    password: "Monika123!",
     loyaltyCredits: 18,
     favoriteSalons: ["luna", "nord"],
+    createdAt: new Date(Date.now() - 42 * DAY_MS).toISOString(),
+    lastLoginAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
   },
+];
+
+const staffProfiles = {
   salon: {
     id: "manager-simona",
     role: "salon",
@@ -61,6 +72,255 @@ const categoryServices = {
   ],
 };
 
+const cityPriceAdjustments = {
+  Vilnius: 6,
+  Kaunas: 2,
+  Klaipeda: 3,
+};
+
+const neighborhoodPriceAdjustments = {
+  Senamiestis: 3,
+  Naujamiestis: 2,
+  Zverynas: 3,
+  Centras: 2,
+  Zaliakalnis: 1,
+  Silainiai: 0,
+  Seskine: 0,
+  Pajuris: 2,
+  Melnrage: 2,
+};
+
+const serviceDemandAdjustments = {
+  balayage: 8,
+  cut: 0,
+  gloss: 2,
+  gel: 1,
+  builder: 3,
+  pedi: 3,
+  hydra: 5,
+  cleanse: 3,
+  "brow-lam": 1,
+  relax: 2,
+  deep: 1,
+  couple: 8,
+};
+
+const salonLanguagesByCity = {
+  Vilnius: ["LT", "EN", "RU"],
+  Kaunas: ["LT", "EN"],
+  Klaipeda: ["LT", "EN", "RU"],
+};
+
+const salonAudienceNotes = {
+  Plaukai: [
+    "Dazniausiai renkasi klientes, kurios nori ilgiau issilaikancio rezultato ir ramios konsultacijos.",
+    "Tinka po darbo rezervacijoms, spalvos korekcijoms ir pirmam didesniam pokyciui be streso.",
+    "Labiausiai vertina naturalu dazyma, patogiai nesiojama kirpimo forma ir prieziuros rekomendacijas.",
+  ],
+  Nagai: [
+    "Cia daznai grizta klientes, kurioms svarbi forma, tvarkingas pavirsius ir aiskus nesiojimo terminas.",
+    "Populiaru tarp tu, kurios iesko svaraus nude, french arba greitos korekcijos po darbo.",
+    "Daznai rezervuoja nuolatines klientes, kurios nori vienodai tvarkingo rezultato kiekviena karta.",
+  ],
+  Veidas: [
+    "Tinka toms, kurios nori aiskaus odos plano, neperkrautos proceduros ir pastebimo svytejimo is karto.",
+    "Dazniausiai renkasi klientes pries renginius, po itemptos savaites arba norint susitvarkyti rutina.",
+    "Patogu pirmam vizitui, nes proceduros daznai prasideda nuo konsultacijos ir odos poreikio ivertinimo.",
+  ],
+  Masazai: [
+    "Dažniausiai renkasi dirbantys sedima darba, sportuojantys arba ieskantys ramesnio vakaro ritualo.",
+    "Populiaru tarp klientu, kurie nori aiskaus nugaros ir peciu atlaisvinimo be pernelyg agresyvaus spaudimo.",
+    "Tinka tiek greitam atsistatymui po darbo, tiek ilgesniam ramiam vizitui savaitgalio rytui.",
+  ],
+};
+
+const salonVibeNotes = {
+  Plaukai: [
+    "Erdve orientuota i konsultacija, tvarkinga spalvos eiga ir lengvai priziurima rezultata kasdien.",
+    "Atmosfera rami, bet gyva - daugiausia rezervuojama dazymams, glotnumui ir kirpimo atnaujinimui.",
+    "Dažnas pasirinkimas, kai norisi ne tik paslaugos, bet ir aiskaus plano, kaip nesugadinti rezultato namuose.",
+  ],
+  Nagai: [
+    "Vizitai suplanuoti taip, kad nereiketu skubeti, o rezultatas atrodytu tvarkingai iki kito apsilankymo.",
+    "Studijos tempas ramus, daug demesio skiriama svariems tonams, odeliu tvarkai ir formai.",
+    "Daug klientu renkasi si salona del nuoseklumo: forma, ilgis ir pavirsius cia labai prognozuojami.",
+  ],
+  Veidas: [
+    "Didelis demesys skiriamas odos komfortui, aiskiai komunikacijai ir proceduroms be bereikalingo agresyvumo.",
+    "Dažnai rezervuojama pries renginius arba tada, kai norisi skaistesnes odos per viena vizita.",
+    "Cia proceduros daznai papildomos trumpa rekomendacija namu rutinai ir realiu odos poreikiu paaiskinimu.",
+  ],
+  Masazai: [
+    "Salono tempas ramesnis, su daug demesio privatumui, kvapui ir perejimui is darbo rezimo i poilsio busena.",
+    "Klientai daznai mini, kad cia lengva suprasti, kokio spaudimo tiketi ir kam procedura labiausiai tinka.",
+    "Dalis vizitu rezervuojami poroms arba sedimo darbo sukeltai itampai nugaros ir peciu zonoje mazinti.",
+  ],
+};
+
+const realisticSalonAudienceNotes = {
+  Plaukai: [
+    "Dazniausiai renkasi klientes, kurios nori ilgiau issilaikancio rezultato ir ramios konsultacijos.",
+    "Tinka po darbo rezervacijoms, spalvos korekcijoms ir pirmam didesniam pokyciui be streso.",
+    "Labiausiai vertina naturalu dazyma, patogiai nesiojama kirpimo forma ir prieziuros rekomendacijas.",
+  ],
+  Nagai: [
+    "Cia daznai grizta klientes, kurioms svarbi forma, tvarkingas pavirsius ir aiskus nesiojimo terminas.",
+    "Populiaru tarp tu, kurios iesko svaraus nude, french arba greitos korekcijos po darbo.",
+    "Daznai rezervuoja nuolatines klientes, kurios nori vienodai tvarkingo rezultato kiekviena karta.",
+  ],
+  Veidas: [
+    "Tinka toms, kurios nori aiskaus odos plano, neperkrautos proceduros ir pastebimo svytejimo is karto.",
+    "Dazniausiai renkasi klientes pries renginius, po itemptos savaites arba norint susitvarkyti rutina.",
+    "Patogu pirmam vizitui, nes proceduros daznai prasideda nuo konsultacijos ir odos poreikio ivertinimo.",
+  ],
+  Masazai: [
+    "Dazniausiai renkasi dirbantys sedima darba, sportuojantys arba ieskantys ramesnio vakaro ritualo.",
+    "Populiaru tarp klientu, kurie nori aiskaus nugaros ir peciu atlaisvinimo be pernelyg agresyvaus spaudimo.",
+    "Tinka tiek greitam atsistatymui po darbo, tiek ilgesniam ramiam vizitui savaitgalio rytui.",
+  ],
+};
+
+const realisticSalonVibeNotes = {
+  Plaukai: [
+    "Erdve orientuota i konsultacija, tvarkinga spalvos eiga ir lengvai priziurima rezultata kasdien.",
+    "Atmosfera rami, bet gyva - daugiausia rezervuojama dazymams, glotnumui ir kirpimo atnaujinimui.",
+    "Daznas pasirinkimas, kai norisi ne tik paslaugos, bet ir aiskaus plano, kaip nesugadinti rezultato namuose.",
+  ],
+  Nagai: [
+    "Vizitai suplanuoti taip, kad nereiketu skubeti, o rezultatas atrodytu tvarkingai iki kito apsilankymo.",
+    "Studijos tempas ramus, daug demesio skiriama svariems tonams, odeliu tvarkai ir formai.",
+    "Daug klientu renkasi si salona del nuoseklumo: forma, ilgis ir pavirsius cia labai prognozuojami.",
+  ],
+  Veidas: [
+    "Didelis demesys skiriamas odos komfortui, aiskiai komunikacijai ir proceduroms be bereikalingo agresyvumo.",
+    "Daznai rezervuojama pries renginius arba tada, kai norisi skaistesnes odos per viena vizita.",
+    "Cia proceduros daznai papildomos trumpa rekomendacija namu rutinai ir realiu odos poreikiu paaiskinimu.",
+  ],
+  Masazai: [
+    "Salono tempas ramesnis, su daug demesio privatumui, kvapui ir perejimui is darbo rezimo i poilsio busena.",
+    "Klientai daznai mini, kad cia lengva suprasti, kokio spaudimo tiketis ir kam procedura labiausiai tinka.",
+    "Dalis vizitu rezervuojami poroms arba sedimo darbo sukeltai itampai nugaros ir peciu zonoje mazinti.",
+  ],
+};
+
+const neighborhoodArrivalNotes = {
+  Senamiestis: "Patogu uzsukti pesciomis is centro, bet vakariniai ir savaitgalio laikai cia uzsipildo greiciausiai.",
+  Naujamiestis: "Aplink daug biuru ir kaviniu, todel pietu pertraukos bei po darbo rezervacijos daznai dingsta pirmiausia.",
+  Zverynas: "Ramesnis rajonas ilgesniems vizitams, ypac kai norisi konsultacijos ar nepertraukiamo poilsio laiko.",
+  Centras: "Lengva suderinti su dienos reikalais, todel rezervacijos cia daznai derinamos tarp susitikimu ar po darbo.",
+  Zaliakalnis: "Dazniausiai renkasi vietiniai klientai ir tie, kuriems svarbi tylesne aplinka be miesto skubejimo.",
+  Silainiai: "Patogu atvykti automobiliu, todel salone daugiau planuotu, is anksto susiderintu rezervaciju.",
+  Seskine: "Cia ypac paklausios greitesnes paslaugos, kurias patogu iterpti tarp dienos planu.",
+  Pajuris: "Ramesnis ritmas, daugiau savaitgalio rezervaciju ir klientu, kurie nori ilgesnio vizito be skubejimo.",
+  Melnrage: "Pajurio lokacija stipriausia savaitgaliais, kai klientai rezervuoja proceduras kartu su poilsio planais.",
+};
+
+const salonOfferTemplates = {
+  Plaukai: [
+    {
+      label: "Pirmam vizitui",
+      title: "Konsultacija pries %{service}",
+      description:
+        "Naujos klientes daznai pradeda nuo %{service} ir trumpos konsultacijos, kad rezultatas butu lengvai priziurimas namuose.",
+    },
+    {
+      label: "Populiaru po darbo",
+      title: "Vakariniai laikai uzsipildo greiciausiai",
+      description:
+        "Jei taikai i po darbo vizita, %{service} ir %{service2} verta rezervuoti bent keliomis dienomis anksciau.",
+    },
+    {
+      label: "Dazniausiai renkasi",
+      title: "%{service} nuo %{price} EUR",
+      description:
+        "Klientes cia grizta del naturaliai atrodancio rezultato ir aiskaus plano, kaip islaikyti efekta iki kito vizito.",
+    },
+  ],
+  Nagai: [
+    {
+      label: "Greitas pasirinkimas",
+      title: "%{service} su tvarkinga korekcija",
+      description:
+        "Didziausia paklausa tenka rezervacijoms po darbo, kai reikia svaraus tono, tikslios formos ir aiskaus nesiojimo termino.",
+    },
+    {
+      label: "Nuolatinems klientems",
+      title: "Stabilus rezultatas kas 3-4 savaites",
+      description:
+        "Cia dazniausiai griztama del %{service2}, nes klientems svarbu, kad ilgis, forma ir pavirsius butu prognozuojami.",
+    },
+    {
+      label: "Top rezervacija",
+      title: "%{service} nuo %{price} EUR",
+      description:
+        "Populiariausi laikai issigaudo greitai, ypac kai reikia ir nuemimo, ir naujo padengimo vieno vizito metu.",
+    },
+  ],
+  Veidas: [
+    {
+      label: "Pries rengini",
+      title: "Greitas glow be agresyvumo",
+      description:
+        "Klientes dazniausiai renkasi %{service} ar %{service2}, kai nori pailsejusios odos vaizdo dar ta pacia diena.",
+    },
+    {
+      label: "Pirmam apsilankymui",
+      title: "Procedura su aiskia konsultacija",
+      description:
+        "Pries aktyvesnes proceduras komanda trumpai ivertina odos bukle ir pasiulo, ka realu testi namuose.",
+    },
+    {
+      label: "Dazniausiai klausia",
+      title: "%{service} nuo %{price} EUR",
+      description:
+        "Salonas renkamas tada, kai norisi matomo rezultato, bet be bereikalingo odos dirginimo ar per intensyvaus pojucio.",
+    },
+  ],
+  Masazai: [
+    {
+      label: "Po darbo",
+      title: "Nugara ir peciai uzsipildo pirmiausia",
+      description:
+        "Didziausia paklausa tenka %{service} ir %{service2}, ypac kai klientai nori sumazinti itempa po sedimo darbo.",
+    },
+    {
+      label: "Savaitgalio ritmas",
+      title: "Ilgesni ritualai rezervuojami is anksto",
+      description:
+        "Poru ir ilgesnius seansus klientai dazniausiai planuoja kelioms dienoms i prieki, kad gautu jiems patogu laika.",
+    },
+    {
+      label: "Dazniausiai renkasi",
+      title: "%{service} nuo %{price} EUR",
+      description:
+        "Labiausiai vertinamas aiskiai suderintas spaudimas, ramus tempas ir tikras palengvejimas jau po pirmo apsilankymo.",
+    },
+  ],
+};
+
+const salonPolicyTemplates = {
+  Plaukai: [
+    "Dazymams ir ilgesnems plauku proceduroms gali buti taikomas uzstatas nuo %{deposit} EUR.",
+    "I spalvos vizita verta atvykti be sunkesniu alieju ar stipriu formavimo priemoniu, kad meistrui butu lengviau ivertinti plauka.",
+    "Jei norisi didesnio spalvos pokycio, rekomenduojama pastabose parasyti trumpa plauku istorija ir paskutini dazyma.",
+  ],
+  Nagai: [
+    "Builder ar priauginimo korekcijoms verta pastabose nurodyti, ar ant nagu jau yra kita medziaga.",
+    "Veluojant daugiau nei 10 min. dizaino dalis gali buti supaprastinta, kad neveluotu kitos klientes rezervacija.",
+    "Kai kuriems ilgesniems nagu darbams gali buti taikomas uzstatas nuo %{deposit} EUR.",
+  ],
+  Veidas: [
+    "Jei paskutinemis dienomis naudojai aktyvius serumus, rugstis ar retinoli, tai verta parasyti pastabose dar pries vizita.",
+    "Po jautresniu proceduru komanda gali rekomenduoti ta pacia diena vengti saunos, intensyvaus sporto ir stipraus makiazo.",
+    "Sudetingesniems odos planams pirmas vizitas gali prasideti nuo trumpesnes konsultacijos ir bukles ivertinimo.",
+  ],
+  Masazai: [
+    "Jei turi traumu, nesena uzdegima ar specifiniu jautriu zonu, parasyk tai pastabose pries vizita.",
+    "Veluojant daugiau nei 10 min. seansas gali buti trumpinamas, kad neveluotu kiti rezervuoti laikai.",
+    "Ilgesniems savaitgalio ritualams arba poru seansams gali buti taikomas uzstatas nuo %{deposit} EUR.",
+  ],
+};
+
 function buildSpecialist(config) {
   return {
     id: config.id,
@@ -77,7 +337,13 @@ function buildSalon(config) {
     id: service.id,
     name: service.name,
     duration: service.duration,
-    price: service.basePrice + config.priceShift + index * 2,
+    price:
+      service.basePrice +
+      config.priceShift +
+      index * 2 +
+      (cityPriceAdjustments[config.city] || 0) +
+      (neighborhoodPriceAdjustments[config.neighborhood] || 0) +
+      (serviceDemandAdjustments[service.id] || 0),
   }));
 
   return {
@@ -1405,6 +1671,138 @@ function ensureSalonSpecialists(salon, salonIndex) {
 const allSalonConfigs = [...salonConfigs, ...createGeneratedSalonConfigs()];
 const salons = allSalonConfigs.map(buildSalon).map(applyContentOverrides).map(ensureSalonSpecialists);
 
+const salonDetailMedia = {
+  Plaukai: [
+    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=1200&q=80",
+  ],
+  Nagai: [
+    "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1610992015732-2449b76344bc?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=1200&q=80",
+  ],
+  Veidas: [
+    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80",
+  ],
+  Masazai: [
+    "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80",
+  ],
+};
+
+const salonReviewAuthors = [
+  "Greta J.",
+  "Kamile P.",
+  "Egle S.",
+  "Austeja M.",
+  "Monika K.",
+  "Silvija D.",
+  "Ruta V.",
+  "Emilija T.",
+];
+
+const salonReviewDates = ["pries 2 d.", "pries 5 d.", "pries savaite", "pries 2 savaites", "si menesi"];
+
+const salonReviewTemplates = {
+  Plaukai: [
+    "Labai patiko, kad %{specialist} isklausė, ko noriu, ir pasiule sprendima, kuris tiko mano kasdieniam ritmui.",
+    "Spalva gavosi svari ir naturali, o po vizito dar gavau aisku prieziuros plana namams.",
+    "Vizitas praejo ramiai, rezultatas atrode brangiai, o plaukai po proceduros liko gyvi ir lengvi.",
+  ],
+  Nagai: [
+    "Tvarkingas darbas, labai svarus pavirsius ir forma, kuri atlaike visas dvi savaites be streso.",
+    "Manikiuras atrode tiksliai taip, kaip tikejausi, o %{specialist} dirbo greitai ir labai kruopsciai.",
+    "Labai patiko atmosfera ir tai, kad meistre padejo issirinkti tona, kuris tiko prie mano ranku.",
+  ],
+  Veidas: [
+    "Oda po vizito atrode ramesne ir gyvesne, o %{specialist} labai aiskiai paaiskino, kas tinka toliau.",
+    "Puikus balansas tarp rezultato ir svelnumo, po proceduros veidas atrode pailsejes ir skaistus.",
+    "Labai profesionali konsultacija, tvarkingas ritualas ir aiskus jausmas, kad procedura pritaikyta man.",
+  ],
+  Masazai: [
+    "Po seanso peciai ir nugara jautesi gerokai lengviau, o spaudimas buvo tiksliai toks, kokio reikejo.",
+    "Labai rami aplinka, geras tempas ir tikras atsijungimo jausmas jau nuo pirmu minuciu.",
+    "Po darbo dienos toks vizitas buvo idealus, nes isejau daug laisvesniu kunu ir ramesne galva.",
+  ],
+};
+
+const realisticSalonReviewAuthors = [
+  "Greta J.",
+  "Kamile P.",
+  "Egle S.",
+  "Austeja M.",
+  "Monika K.",
+  "Silvija D.",
+  "Ruta V.",
+  "Emilija T.",
+  "Karolina B.",
+  "Juste N.",
+  "Saule L.",
+  "Ugne R.",
+];
+
+const realisticSalonReviewDates = [
+  "pries 2 d.",
+  "pries 5 d.",
+  "pries 9 d.",
+  "pries 2 savaites",
+  "si menesi",
+  "vasario pabaigoje",
+];
+
+const realisticSalonReviewTemplates = {
+  Plaukai: [
+    "%{specialist} labai aiskiai paaiskino, kiek prieziuros man reikes namuose, todel rezultatas atrode graziai ir po keliu plovimu.",
+    "Spalva gavosi svari ir naturali, o %{service} buvo atlikta be skubejimo ir su aiskiu planu kiekvienam etapui.",
+    "Labai patiko, kad po vizito plaukai neatrode perkrauti, o forma buvo pritaikyta tam, kaip realiai juos nesioju kasdien.",
+    "Pirma karta per ilga laika isejau su rezultatu, kuris atrodo tvarkingai ir is arciau, ne tik nuotraukose.",
+  ],
+  Nagai: [
+    "Forma liko tvarkinga iki sekancios korekcijos, o pavirsius issilaike be atsilupimu net po aktyvesnes savaites.",
+    "%{specialist} dirbo labai tiksliai, o %{service} atrode taip, lyg butu suplanuota butent mano ranku formai.",
+    "Labai patiko, kad meistre nepaskubino pasirinkimo ir pasiule tona, kuris realiai tinka kasdienai, o ne tik foto.",
+    "Tvarkingas darbas, svarus pavirsius ir normaliai paaiskinta, kiek laiko rezultatas turetu issilaikyti iki kitos rezervacijos.",
+  ],
+  Veidas: [
+    "Oda po vizito atrode ramesne ir gyvesne, o %{specialist} labai aiskiai paaiskino, ka verta testi namuose.",
+    "Puikus balansas tarp rezultato ir svelnumo: po %{service} veidas atrode pailsejes, bet nebuvo sudirgintas.",
+    "Labai profesionali konsultacija ir aiskus jausmas, kad procedura buvo pritaikyta mano odos buklei, o ne padaryta pagal viena sablona.",
+    "Patiko, kad pries procedura aptareme rutina ir lukescius, todel rezultatas buvo realistiskas ir labai tvarkingas.",
+  ],
+  Masazai: [
+    "Po seanso peciai ir nugara jautesi gerokai lengviau, o spaudimas buvo tiksliai toks, kokio reikejo.",
+    "Labai rami aplinka ir geras tempas: po %{service} jautesi ne tik poilsis, bet ir tikras palengvejimas ten, kur labiausiai kaupiasi itempa.",
+    "Po darbo dienos toks vizitas buvo idealus, nes isejau laisvesniu kunu ir be jausmo, kad procedura buvo per agresyvi.",
+    "Patiko, kad %{specialist} pries seansa pasitikslino, kokio spaudimo noriu ir kurioms zonoms skirti daugiausia demesio.",
+  ],
+};
+
+const cityStreetPool = {
+  Vilnius: ["Gedimino pr.", "J. Basanaviciaus g.", "Pylimo g.", "A. Gostauto g."],
+  Kaunas: ["Laisves al.", "Kestucio g.", "Savanoriu pr.", "Karaliaus Mindaugo pr."],
+  Klaipeda: ["H. Manto g.", "Turgaus g.", "Naujojo Sodo g.", "Taikos pr."],
+};
+
+const salonMapCoordinates = {
+  "Vilnius-Naujamiestis": { lat: 54.6819, lon: 25.266 },
+  "Vilnius-Zverynas": { lat: 54.6959, lon: 25.2367 },
+  "Vilnius-Senamiestis": { lat: 54.6784, lon: 25.2877 },
+  "Vilnius-Seskine": { lat: 54.7174, lon: 25.2514 },
+  "Kaunas-Centras": { lat: 54.8989, lon: 23.9038 },
+  "Kaunas-Silainiai": { lat: 54.9282, lon: 23.8794 },
+  "Kaunas-Zaliakalnis": { lat: 54.9106, lon: 23.9394 },
+  "Klaipeda-Senamiestis": { lat: 55.7091, lon: 21.1324 },
+  "Klaipeda-Pajuris": { lat: 55.7422, lon: 21.0913 },
+  "Klaipeda-Melnrage": { lat: 55.7467, lon: 21.0822 },
+  "Vilnius-default": { lat: 54.6872, lon: 25.2797 },
+  "Kaunas-default": { lat: 54.8985, lon: 23.9036 },
+  "Klaipeda-default": { lat: 55.7033, lon: 21.1443 },
+};
+
 function createSeedBooking({
   id,
   salonId,
@@ -1438,7 +1836,7 @@ function createSeedBooking({
     customerName,
     customerEmail,
     customerPhone,
-    customerId: customerEmail === profiles.customer.email ? profiles.customer.id : `guest-${id}`,
+    customerId: customerEmail === seedCustomerAccounts[0].email ? seedCustomerAccounts[0].id : `guest-${id}`,
     paymentMethod,
     paymentAmount,
     totalAmount: service.price,
@@ -1457,9 +1855,9 @@ const seedBookings = [
     specialistId: "milda",
     date: upcomingDates[1],
     time: "17:00",
-    customerName: profiles.customer.name,
-    customerEmail: profiles.customer.email,
-    customerPhone: profiles.customer.phone,
+    customerName: seedCustomerAccounts[0].name,
+    customerEmail: seedCustomerAccounts[0].email,
+    customerPhone: seedCustomerAccounts[0].phone,
     paymentMethod: "card",
     status: "Patvirtinta",
   }),
@@ -1553,18 +1951,35 @@ const defaultState = {
   },
   workspace: "customer",
   currentUserRole: null,
+  currentUserId: null,
+  accounts: seedCustomerAccounts,
   bookings: seedBookings,
   payments: seedPayments,
   activities: seedActivities,
   recentQueries: ["Nagai"],
   selectedSpecialists: {},
   showResults: false,
+  activeSalonId: null,
   bookingDraft: null,
   bookingContext: null,
   bookingStep: 1,
 };
 
 const state = loadState();
+let authView = "login";
+const uiState = {
+  resultsPending: false,
+  toast: null,
+  backendAvailable: false,
+  backendChecked: false,
+  backendWarningShown: false,
+  lastServerSnapshotHash: "",
+};
+const uiTimers = {
+  results: 0,
+  toast: 0,
+  backendSync: 0,
+};
 
 const refs = {
   sessionLabel: document.querySelector("#session-label"),
@@ -1587,17 +2002,45 @@ const refs = {
   sortSelect: document.querySelector("#sort-select"),
   instantOnly: document.querySelector("#instant-only"),
   resultsSection: document.querySelector("#salons"),
+  salonDetailSection: document.querySelector("#salon-detail"),
+  salonDetailShell: document.querySelector("#salon-detail-shell"),
   workspaceSection: document.querySelector("#workspace"),
+  workspaceEyebrow: document.querySelector("#workspace-eyebrow"),
+  workspaceTitle: document.querySelector("#workspace-title"),
   salonList: document.querySelector("#salon-list"),
   resultsSummary: document.querySelector("#results-summary"),
+  activeFilterBar: document.querySelector("#active-filter-bar"),
+  activeFilterList: document.querySelector("#active-filter-list"),
   workspacePanel: document.querySelector("#workspace-panel"),
   sessionCard: document.querySelector("#session-card"),
   activityFeed: document.querySelector("#activity-feed"),
+  activityEyebrow: document.querySelector("#activity-eyebrow"),
+  activityTitle: document.querySelector("#activity-title"),
   paymentsCard: document.querySelector("#payments-card"),
+  summaryEyebrow: document.querySelector("#summary-eyebrow"),
+  summaryTitle: document.querySelector("#summary-title"),
+  toastRegion: document.querySelector("#toast-region"),
   heroBookingsCount: document.querySelector("#hero-bookings-count"),
   heroRevenueTotal: document.querySelector("#hero-revenue-total"),
   heroSalonsCount: document.querySelector("#hero-salons-count"),
   authModal: document.querySelector("#auth-modal"),
+  authMessage: document.querySelector("#auth-message"),
+  authTabs: Array.from(document.querySelectorAll("#auth-tabs [data-auth-view-target]")),
+  authViewButtons: Array.from(document.querySelectorAll("[data-auth-view-target]")),
+  authViews: Array.from(document.querySelectorAll("[data-auth-view]")),
+  authLoginEmail: document.querySelector("#auth-login-email"),
+  authLoginPassword: document.querySelector("#auth-login-password"),
+  authLoginSubmit: document.querySelector("#auth-login-submit"),
+  authRegisterName: document.querySelector("#auth-register-name"),
+  authRegisterPhone: document.querySelector("#auth-register-phone"),
+  authRegisterEmail: document.querySelector("#auth-register-email"),
+  authRegisterPassword: document.querySelector("#auth-register-password"),
+  authRegisterPasswordRepeat: document.querySelector("#auth-register-password-repeat"),
+  authRegisterSubmit: document.querySelector("#auth-register-submit"),
+  authResetEmail: document.querySelector("#auth-reset-email"),
+  authResetPassword: document.querySelector("#auth-reset-password"),
+  authResetPasswordRepeat: document.querySelector("#auth-reset-password-repeat"),
+  authResetSubmit: document.querySelector("#auth-reset-submit"),
   bookingModal: document.querySelector("#booking-modal"),
   bookingTitle: document.querySelector("#booking-title"),
   bookingSubtitle: document.querySelector("#booking-subtitle"),
@@ -1627,8 +2070,11 @@ const refs = {
 initializeMegaMenu();
 populateDateFilterOptions();
 hydrateControls();
+initializeSalonRouting();
+initializeAuthModal();
 renderAll();
 initializeSearchPanel();
+void initializeBackend();
 
 refs.searchForm.addEventListener("submit", handleSearchSubmit);
 refs.queryInput.addEventListener("input", handleSearchLiveInput);
@@ -1657,6 +2103,7 @@ refs.bookingService.addEventListener("change", () => {
   }
 
   state.bookingDraft.serviceId = refs.bookingService.value;
+  syncDraftTimeWithAvailability();
   renderBookingFlow();
 });
 refs.bookingSpecialist.addEventListener("change", () => {
@@ -1665,6 +2112,7 @@ refs.bookingSpecialist.addEventListener("change", () => {
   }
 
   state.bookingDraft.specialistId = refs.bookingSpecialist.value;
+  syncDraftTimeWithAvailability();
   renderBookingFlow();
 });
 refs.bookingDate.addEventListener("change", () => {
@@ -1673,9 +2121,7 @@ refs.bookingDate.addEventListener("change", () => {
   }
 
   state.bookingDraft.date = refs.bookingDate.value;
-  if (!getAvailableSlots(state.bookingDraft.salonId, state.bookingDraft.date).includes(state.bookingDraft.time)) {
-    state.bookingDraft.time = "";
-  }
+  syncDraftTimeWithAvailability();
   renderBookingFlow();
 });
 refs.bookingName.addEventListener("input", () => updateDraftField("customerName", refs.bookingName.value));
@@ -1684,6 +2130,9 @@ refs.bookingEmail.addEventListener("input", () => updateDraftField("customerEmai
 refs.bookingNotes.addEventListener("input", () => updateDraftField("notes", refs.bookingNotes.value));
 refs.bookingBack.addEventListener("click", handleBookingBack);
 refs.bookingNext.addEventListener("click", handleBookingNext);
+refs.authLoginSubmit?.addEventListener("click", handleCustomerLogin);
+refs.authRegisterSubmit?.addEventListener("click", handleCustomerRegistration);
+refs.authResetSubmit?.addEventListener("click", handlePasswordReset);
 
 document.addEventListener("click", handleDocumentClick);
 
@@ -1705,6 +2154,273 @@ refs.bookingModal.addEventListener("close", () => {
   state.bookingStep = 1;
   refs.bookingMessage.textContent = "";
 });
+
+function initializeAuthModal() {
+  if (!refs.authModal) {
+    return;
+  }
+
+  setAuthView("login");
+  setAuthMessage("");
+
+  refs.authViewButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextView = button.getAttribute("data-auth-view-target");
+      if (nextView) {
+        setAuthView(nextView);
+      }
+    });
+  });
+
+  [
+    refs.authLoginEmail,
+    refs.authLoginPassword,
+    refs.authRegisterName,
+    refs.authRegisterPhone,
+    refs.authRegisterEmail,
+    refs.authRegisterPassword,
+    refs.authRegisterPasswordRepeat,
+    refs.authResetEmail,
+    refs.authResetPassword,
+    refs.authResetPasswordRepeat,
+  ]
+    .filter(Boolean)
+    .forEach((input) => {
+      input.addEventListener("keydown", handleAuthInputKeydown);
+    });
+
+  refs.authModal.addEventListener("close", () => {
+    setAuthMessage("");
+    setAuthView("login");
+  });
+}
+
+function openAuthModal(view = "login") {
+  if (!refs.authModal) {
+    return;
+  }
+
+  setAuthView(view);
+  setAuthMessage("");
+
+  const currentUser = getCurrentUser();
+  if (currentUser?.role === "customer" && refs.authLoginEmail) {
+    refs.authLoginEmail.value = currentUser.email;
+  }
+
+  openDialog(refs.authModal);
+}
+
+function setAuthView(view) {
+  authView = view;
+  if (refs.authMessage) {
+    refs.authMessage.hidden = true;
+    refs.authMessage.textContent = "";
+  }
+  refs.authTabs.forEach((button) => {
+    const isActive = button.getAttribute("data-auth-view-target") === view;
+    button.classList.toggle("active", isActive);
+  });
+  refs.authViews.forEach((panel) => {
+    const isActive = panel.getAttribute("data-auth-view") === view;
+    panel.classList.toggle("is-hidden", !isActive);
+  });
+}
+
+function setAuthMessage(message, tone = "info") {
+  if (!refs.authMessage) {
+    return;
+  }
+
+  refs.authMessage.textContent = message;
+  refs.authMessage.hidden = !message;
+  refs.authMessage.setAttribute("data-tone", tone);
+}
+
+function handleAuthInputKeydown(event) {
+  if (event.key !== "Enter") {
+    return;
+  }
+
+  event.preventDefault();
+  if (authView === "login") {
+    handleCustomerLogin();
+    return;
+  }
+
+  if (authView === "register") {
+    handleCustomerRegistration();
+    return;
+  }
+
+  handlePasswordReset();
+}
+
+async function handleCustomerLogin() {
+  const email = refs.authLoginEmail?.value || "";
+  const password = refs.authLoginPassword?.value || "";
+
+  if (uiState.backendAvailable) {
+    try {
+      const response = await apiRequest("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      applyServerSnapshot(response.snapshot || response);
+      setAuthMessage("");
+      loginAsCustomer(response.account.id, { skipLastLoginUpdate: true });
+      return;
+    } catch (error) {
+      if (error.code !== "BACKEND_UNAVAILABLE") {
+        setAuthMessage(error.payload?.message || "Nepavyko prisijungti. Patikrink el. pasta ir slaptazodi.", "error");
+        return;
+      }
+    }
+  }
+
+  const account = getCustomerAccountByEmail(email);
+
+  if (!account || account.password !== password) {
+    setAuthMessage("Nepavyko prisijungti. Patikrink el. pasta ir slaptazodi.", "error");
+    return;
+  }
+
+  setAuthMessage("");
+  loginAsCustomer(account.id);
+}
+
+async function handleCustomerRegistration() {
+  const name = String(refs.authRegisterName?.value || "").trim();
+  const phone = String(refs.authRegisterPhone?.value || "").trim();
+  const email = String(refs.authRegisterEmail?.value || "")
+    .trim()
+    .toLowerCase();
+  const password = String(refs.authRegisterPassword?.value || "");
+  const passwordRepeat = String(refs.authRegisterPasswordRepeat?.value || "");
+
+  if (!name || !isValidCustomerPhone(phone) || !isValidCustomerEmail(email)) {
+    setAuthMessage("Uzpildyk varda, teisinga telefono numeri ir el. pasta.", "error");
+    return;
+  }
+
+  if (password.length < 8) {
+    setAuthMessage("Slaptazodis turi buti bent 8 simboliu ilgio.", "error");
+    return;
+  }
+
+  if (password !== passwordRepeat) {
+    setAuthMessage("Slaptazodziai nesutampa.", "error");
+    return;
+  }
+
+  if (getCustomerAccountByEmail(email) || Object.values(staffProfiles).some((profile) => profile.email === email)) {
+    setAuthMessage("Paskyra su tokiu el. pastu jau egzistuoja.", "error");
+    return;
+  }
+
+  if (uiState.backendAvailable) {
+    try {
+      const response = await apiRequest("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name, phone, email, password }),
+      });
+      applyServerSnapshot(response.snapshot || response);
+      setAuthMessage("");
+      loginAsCustomer(response.account.id, { skipLastLoginUpdate: true });
+      return;
+    } catch (error) {
+      if (error.code !== "BACKEND_UNAVAILABLE") {
+        setAuthMessage(error.payload?.message || "Nepavyko sukurti paskyros.", "error");
+        return;
+      }
+    }
+  }
+
+  const account = normalizeCustomerAccount({
+    id: makeId("customer"),
+    name,
+    phone,
+    email,
+    password,
+    loyaltyCredits: 10,
+    favoriteSalons: [],
+    createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(),
+  });
+
+  state.accounts = [account, ...getCustomerAccounts()].map(normalizeCustomerAccount);
+  state.activities = [
+    {
+      id: makeId("activity"),
+      title: "Sukurta nauja kliento paskyra",
+      meta: `${account.name} uzsiregistravo ir gavo 10 lojalumo tasku pasveikinimui.`,
+      tone: "success",
+      createdAt: new Date().toISOString(),
+    },
+    ...state.activities,
+  ].slice(0, 10);
+
+  loginAsCustomer(account.id);
+}
+
+async function handlePasswordReset() {
+  const email = String(refs.authResetEmail?.value || "")
+    .trim()
+    .toLowerCase();
+  const password = String(refs.authResetPassword?.value || "");
+  const passwordRepeat = String(refs.authResetPasswordRepeat?.value || "");
+  const account = getCustomerAccountByEmail(email);
+
+  if (!account) {
+    setAuthMessage("Kliento paskyra su tokiu el. pastu nerasta.", "error");
+    return;
+  }
+
+  if (password.length < 8) {
+    setAuthMessage("Naujas slaptazodis turi buti bent 8 simboliu ilgio.", "error");
+    return;
+  }
+
+  if (password !== passwordRepeat) {
+    setAuthMessage("Nauji slaptazodziai nesutampa.", "error");
+    return;
+  }
+
+  if (uiState.backendAvailable) {
+    try {
+      const response = await apiRequest("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      applyServerSnapshot(response.snapshot || response);
+      setAuthView("login");
+      if (refs.authLoginEmail) {
+        refs.authLoginEmail.value = email;
+      }
+      if (refs.authLoginPassword) {
+        refs.authLoginPassword.value = "";
+      }
+      setAuthMessage(response.message || "Slaptazodis atnaujintas. Dabar gali prisijungti su nauju slaptazodziu.", "success");
+      return;
+    } catch (error) {
+      if (error.code !== "BACKEND_UNAVAILABLE") {
+        setAuthMessage(error.payload?.message || "Nepavyko atnaujinti slaptazodzio.", "error");
+        return;
+      }
+    }
+  }
+
+  updateCustomerAccountRecord(account.id, { password });
+  persistState();
+  setAuthView("login");
+  if (refs.authLoginEmail) {
+    refs.authLoginEmail.value = email;
+  }
+  if (refs.authLoginPassword) {
+    refs.authLoginPassword.value = "";
+  }
+  setAuthMessage("Slaptazodis atnaujintas. Dabar gali prisijungti su nauju slaptazodziu.", "success");
+}
 
 function initializeMegaMenu() {
   if (!refs.megaMenu || !refs.megaTriggers.length || !refs.megaPanels.length) {
@@ -2025,16 +2741,52 @@ function handleDocumentClick(event) {
   const openAuthButton = event.target.closest("[data-open-auth]");
   if (openAuthButton) {
     event.preventDefault();
-    openDialog(refs.authModal);
+    openAuthModal(openAuthButton.getAttribute("data-open-auth-view") || "login");
+    return;
+  }
+
+  const closeSalonDetailButton = event.target.closest("[data-close-salon-detail]");
+  if (closeSalonDetailButton) {
+    event.preventDefault();
+    closeSalonDetailPage();
+    return;
+  }
+
+  const salonScrollButton = event.target.closest("[data-salon-scroll]");
+  if (salonScrollButton) {
+    const target = salonScrollButton.getAttribute("data-salon-scroll");
+    if (target) {
+      scrollToSalonDetailAnchor(target);
+    }
     return;
   }
 
   const workspaceButton = event.target.closest("[data-switch-workspace]");
   if (workspaceButton) {
     const workspace = workspaceButton.getAttribute("data-switch-workspace");
-    if (workspace) {
+    if (workspace && canAccessWorkspace(workspace)) {
       state.workspace = workspace;
       persistAndRender();
+    } else if (!state.currentUserRole) {
+      openAuthModal("login");
+    }
+    return;
+  }
+
+  const openSalonButton = event.target.closest("[data-open-salon]");
+  if (openSalonButton) {
+    const salonId = openSalonButton.getAttribute("data-salon-id");
+    if (salonId) {
+      openSalonDetailPage(salonId);
+    }
+    return;
+  }
+
+  const favoriteButton = event.target.closest("[data-toggle-favorite]");
+  if (favoriteButton) {
+    const salonId = favoriteButton.getAttribute("data-salon-id");
+    if (salonId) {
+      toggleFavoriteSalon(salonId);
     }
     return;
   }
@@ -2042,7 +2794,14 @@ function handleDocumentClick(event) {
   const loginButton = event.target.closest("[data-login-role]");
   if (loginButton) {
     const role = loginButton.getAttribute("data-login-role");
-    loginAs(role);
+    const accountId = loginButton.getAttribute("data-login-account") || "";
+    loginAs(role, accountId);
+    return;
+  }
+
+  const closeAuthButton = event.target.closest("[data-close-auth]");
+  if (closeAuthButton) {
+    closeDialog(refs.authModal);
     return;
   }
 
@@ -2092,11 +2851,11 @@ function handleDocumentClick(event) {
     }
 
     state.showResults = true;
+    clearSalonDetailState();
     closeMegaMenu();
     closeSearchSuggestions();
     closeDatePanel();
-    persistAndRender();
-    scrollToResults();
+    runResultsTransition();
     return;
   }
 
@@ -2105,7 +2864,8 @@ function handleDocumentClick(event) {
     const category = serviceFilterButton.getAttribute("data-service-filter");
     state.filters.category = category;
     state.showResults = true;
-    persistAndRender();
+    clearSalonDetailState();
+    runResultsTransition({ scroll: false });
     return;
   }
 
@@ -2116,7 +2876,8 @@ function handleDocumentClick(event) {
     state.filters.location = city === "all" ? "" : city;
     refs.locationInput.value = state.filters.location;
     state.showResults = true;
-    persistAndRender();
+    clearSalonDetailState();
+    runResultsTransition({ scroll: false });
     return;
   }
 
@@ -2137,11 +2898,56 @@ function handleDocumentClick(event) {
     refs.queryInput.value = "";
     refs.locationInput.value = "";
     refs.dateSelect.value = "any";
+    if (refs.customDateInput) {
+      refs.customDateInput.value = "";
+    }
+    if (refs.timeInput) {
+      refs.timeInput.value = "";
+    }
     state.filters.requestedTime = "";
     state.showResults = true;
+    clearSalonDetailState();
     closeSearchSuggestions();
     closeDatePanel();
-    persistAndRender();
+    runResultsTransition();
+    return;
+  }
+
+  const clearFilterButton = event.target.closest("[data-clear-filter]");
+  if (clearFilterButton) {
+    clearFilterByKey(clearFilterButton.getAttribute("data-clear-filter"));
+    state.showResults = true;
+    clearSalonDetailState();
+    closeSearchSuggestions();
+    closeDatePanel();
+    runResultsTransition({ scroll: false });
+    return;
+  }
+
+  const clearAllFiltersButton = event.target.closest("[data-clear-all-filters]");
+  if (clearAllFiltersButton) {
+    state.filters = { ...defaultState.filters };
+    refs.queryInput.value = "";
+    refs.locationInput.value = "";
+    refs.dateSelect.value = "any";
+    if (refs.customDateInput) {
+      refs.customDateInput.value = "";
+    }
+    if (refs.timeInput) {
+      refs.timeInput.value = "";
+    }
+    state.filters.requestedTime = "";
+    state.showResults = true;
+    clearSalonDetailState();
+    closeSearchSuggestions();
+    closeDatePanel();
+    runResultsTransition({ scroll: false });
+    return;
+  }
+
+  const dismissToastButton = event.target.closest("[data-dismiss-toast]");
+  if (dismissToastButton) {
+    clearToast();
     return;
   }
 
@@ -2195,10 +3001,11 @@ function handleSearchSubmit(event) {
     state.filters.city = "all";
   }
   state.showResults = true;
+  clearSalonDetailState();
   closeSearchSuggestions();
   closeDatePanel();
-  persistAndRender();
-  scrollToResults();
+  runResultsTransition();
+  showToast("Paieska atnaujinta", "Atrinkome salonus pagal tavo dabartinius kriterijus.", "info");
 }
 
 function handleSearchLiveInput() {
@@ -2212,6 +3019,26 @@ function updateDraftField(field, value) {
   }
 
   state.bookingDraft[field] = value;
+}
+
+function syncDraftTimeWithAvailability() {
+  if (!state.bookingDraft) {
+    return [];
+  }
+
+  const bookingContext = state.bookingContext || { mode: "create", bookingId: null };
+  const editingBookingId = bookingContext.mode === "edit" ? bookingContext.bookingId : "";
+  const availableSlots = getAvailableSlots(state.bookingDraft.salonId, state.bookingDraft.date, {
+    excludedBookingId: editingBookingId,
+    serviceId: state.bookingDraft.serviceId,
+    specialistId: state.bookingDraft.specialistId,
+  });
+
+  if (!availableSlots.includes(state.bookingDraft.time)) {
+    state.bookingDraft.time = "";
+  }
+
+  return availableSlots;
 }
 
 function handleBookingBack() {
@@ -2251,6 +3078,11 @@ function handleBookingNext() {
       return;
     }
 
+    if (!isValidCustomerEmail(state.bookingDraft.customerEmail) || !isValidCustomerPhone(state.bookingDraft.customerPhone)) {
+      refs.bookingMessage.textContent = "Patikrink el. pasta ir telefono numeri.";
+      return;
+    }
+
     state.bookingStep = 3;
     refs.bookingMessage.textContent = "";
     renderBookingFlow();
@@ -2261,28 +3093,81 @@ function handleBookingNext() {
 }
 
 function confirmBooking() {
+  if (!canCurrentUserStartBooking()) {
+    refs.bookingMessage.textContent = "Rezervuoti gali kliente arba svecias. Darbuotoju paskyros rezervuoti negali.";
+    return;
+  }
+
   const draft = state.bookingDraft;
   const bookingContext = state.bookingContext || { mode: "create", bookingId: null };
   const existingBooking = bookingContext.mode === "edit" ? getBookingById(bookingContext.bookingId) : null;
+  const customer = getActiveCustomerProfile();
   const salon = getSalon(draft.salonId);
   const service = getService(salon, draft.serviceId);
   const specialist = getSpecialist(salon, draft.specialistId);
+  const customerName = String(draft.customerName || "").trim();
+  const customerPhone = String(draft.customerPhone || "").trim();
+  const customerEmail = String(draft.customerEmail || "")
+    .trim()
+    .toLowerCase();
+  const linkedCustomer = customer || getCustomerAccountByEmail(customerEmail);
+  const bookingCustomerId = linkedCustomer?.id || existingBooking?.customerId || getGuestCustomerIdFromEmail(customerEmail);
 
   if (!salon || !service || !specialist) {
     refs.bookingMessage.textContent = "Nepavyko sukomplektuoti rezervacijos.";
     return;
   }
 
-  const availableSlots = getAvailableSlots(salon.id, draft.date, existingBooking?.id || "");
+  if (existingBooking && !canCurrentUserManageBooking(existingBooking)) {
+    refs.bookingMessage.textContent = "Gali valdyti tik savo rezervacijas.";
+    return;
+  }
+
+  if (!isValidCustomerEmail(customerEmail) || !isValidCustomerPhone(customerPhone)) {
+    refs.bookingMessage.textContent = "Patikrink el. pasta ir telefono numeri.";
+    return;
+  }
+
+  const availableSlots = getAvailableSlots(salon.id, draft.date, {
+    excludedBookingId: existingBooking?.id || "",
+    serviceId: draft.serviceId,
+    specialistId: draft.specialistId,
+  });
   if (!availableSlots.includes(draft.time)) {
     refs.bookingMessage.textContent = "Pasirinktas laikas ka tik buvo uzimtas. Pasirink kita slota.";
     renderBookingFlow();
     return;
   }
 
+  if (!isBookingLeadTimeSatisfied(salon, draft.date, draft.time)) {
+    refs.bookingMessage.textContent = `Rezervuoti galima bent ${Math.round(
+      getSalonBookingRules(salon).leadTimeMinutes / 60
+    )} val. iki vizito. Pasirink velesni laika.`;
+    renderBookingFlow();
+    return;
+  }
+
+  if (
+    hasCustomerBookingConflict(
+      {
+        customerId: bookingCustomerId,
+        customerEmail,
+        salonId: salon.id,
+        serviceId: draft.serviceId,
+        date: draft.date,
+        time: draft.time,
+      },
+      existingBooking?.id || ""
+    )
+  ) {
+    refs.bookingMessage.textContent = "Tuo metu jau turi kita aktyvu vizita. Pasirink kita laika.";
+    return;
+  }
+
   const nowIso = new Date().toISOString();
   const bookingId = existingBooking?.id || makeId("booking");
   const paymentAmount = draft.paymentMethod === "onsite" ? Math.round(service.price * 0.2) : service.price;
+  const bookingStatus = getDraftBookingStatus(salon, draft.paymentMethod);
   const booking = normalizeBooking({
     ...(existingBooking || {}),
     id: bookingId,
@@ -2295,15 +3180,18 @@ function confirmBooking() {
     specialistName: specialist.name,
     date: draft.date,
     time: draft.time,
-    customerName: draft.customerName.trim(),
-    customerEmail: draft.customerEmail.trim(),
-    customerPhone: draft.customerPhone.trim(),
-    customerId: existingBooking?.customerId || profiles.customer.id,
+    customerName,
+    customerEmail,
+    customerPhone,
+    customerId: bookingCustomerId,
     paymentMethod: draft.paymentMethod,
     paymentAmount,
     totalAmount: service.price,
+    duration: service.duration,
+    cleanupMinutes: getServiceCleanupMinutes(service, salon),
+    endTime: shiftTimeValue(draft.time, service.duration),
     notes: draft.notes.trim(),
-    status: draft.paymentMethod === "onsite" ? "Uzstatas" : "Patvirtinta",
+    status: bookingStatus,
     createdAt: existingBooking?.createdAt || nowIso,
     updatedAt: nowIso,
   });
@@ -2315,7 +3203,7 @@ function confirmBooking() {
     state.payments = upsertPaymentRecord(state.payments, payment);
     pushActivityEntry(
       `Atnaujinta rezervacija: ${booking.salonName}`,
-      `${formatDateLabel(booking.date)} ${booking.time} | ${booking.serviceName}`,
+      `${formatDateLabel(booking.date)} ${booking.time}-${booking.endTime} | ${booking.serviceName}`,
       "info"
     );
     refs.bookingMessage.textContent = "Rezervacija sekmingai perplanuota.";
@@ -2324,25 +3212,39 @@ function confirmBooking() {
     state.payments = [payment, ...state.payments];
     pushActivityEntry(
       `Sukurta rezervacija: ${booking.salonName}`,
-      `${booking.date} ${booking.time} | ${booking.serviceName} | ${formatPaymentLabel(booking.paymentMethod)}`,
+      `${booking.date} ${booking.time}-${booking.endTime} | ${booking.serviceName} | ${formatPaymentLabel(booking.paymentMethod)}`,
       "success"
     );
-    refs.bookingMessage.textContent =
-      booking.paymentMethod === "onsite"
-        ? "Rezervacija sukurta, uzstatas uzfiksuotas."
-        : "Rezervacija ir apmokejimas patvirtinti.";
+    if (customer) {
+      refs.bookingMessage.textContent =
+        booking.status === "Laukia patvirtinimo"
+          ? "Rezervacijos uzklausa issiusta. Salonas patvirtins laika per 30 min."
+          : booking.paymentMethod === "onsite"
+          ? "Rezervacija sukurta, uzstatas uzfiksuotas."
+          : "Rezervacija ir apmokejimas patvirtinti.";
+    } else {
+      refs.bookingMessage.textContent =
+        booking.status === "Laukia patvirtinimo"
+          ? "Rezervacijos uzklausa issiusta. Patvirtinima gausi pagal nurodyta el. pasta."
+          : booking.paymentMethod === "onsite"
+          ? "Rezervacija sukurta. Uzstatas uzfiksuotas, o detales issiustos tavo kontaktams."
+          : "Rezervacija patvirtinta. Jei veliau prisijungsi tuo paciu el. pastu, galesi valdyti savo vizita.";
+    }
   }
 
-  if (!state.currentUserRole) {
-    state.currentUserRole = "customer";
-  }
-
-  state.workspace = "customer";
   state.bookingContext = null;
+  if (customer) {
+    state.workspace = "customer";
+    clearSalonDetailState();
+  }
 
   persistState();
   renderAll();
-  scrollToWorkspace();
+  if (customer) {
+    scrollToWorkspace();
+  } else {
+    showToast("Rezervacija issiusta", "Vizitas issaugotas ir susietas su tavo el. pastu.", "success");
+  }
 
   window.setTimeout(() => {
     closeDialog(refs.bookingModal);
@@ -2352,34 +3254,35 @@ function confirmBooking() {
 }
 
 function handleWorkspaceBookingAction(action, bookingId) {
+  const booking = getBookingById(bookingId);
+  if (!booking) {
+    return;
+  }
+
   if (action === "repeat") {
-    startBookingRepeat(bookingId);
+    if (canCurrentUserManageBooking(booking)) {
+      startBookingRepeat(bookingId);
+    }
     return;
   }
 
   if (action === "reschedule") {
-    startBookingEdit(bookingId);
-    return;
-  }
-
-  if (action === "confirm") {
-    confirmManagedBooking(bookingId);
-    return;
-  }
-
-  if (action === "complete") {
-    completeManagedBooking(bookingId);
+    if (canCurrentUserManageBooking(booking)) {
+      startBookingEdit(bookingId);
+    }
     return;
   }
 
   if (action === "cancel") {
-    cancelManagedBooking(bookingId);
+    if (canCurrentUserManageBooking(booking)) {
+      cancelCustomerBooking(bookingId);
+    }
   }
 }
 
 function startBookingRepeat(bookingId) {
   const booking = getBookingById(bookingId);
-  if (!booking) {
+  if (!booking || !canCurrentUserManageBooking(booking)) {
     return;
   }
 
@@ -2393,7 +3296,7 @@ function startBookingRepeat(bookingId) {
 
 function startBookingEdit(bookingId) {
   const booking = getBookingById(bookingId);
-  if (!booking || !canRescheduleBooking(booking)) {
+  if (!booking || !canCurrentUserManageBooking(booking) || !canRescheduleBooking(booking)) {
     return;
   }
 
@@ -2439,9 +3342,9 @@ function completeManagedBooking(bookingId) {
   );
 }
 
-function cancelManagedBooking(bookingId) {
+function cancelCustomerBooking(bookingId) {
   const booking = getBookingById(bookingId);
-  if (!booking || isClosedBooking(booking)) {
+  if (!booking || !canCurrentUserManageBooking(booking) || isClosedBooking(booking) || !canCancelBooking(booking)) {
     return;
   }
 
@@ -2449,8 +3352,8 @@ function cancelManagedBooking(bookingId) {
     bookingId,
     { status: "Atsaukta" },
     {
-      title: `Atsaukta rezervacija: ${booking.salonName}`,
-      meta: `${booking.customerName} | ${formatDateLabel(booking.date)} ${booking.time}`,
+      title: `Atsauktas vizitas: ${booking.salonName}`,
+      meta: `${formatDateLabel(booking.date)} ${booking.time} | ${booking.serviceName}`,
       tone: "warning",
     }
   );
@@ -2504,20 +3407,42 @@ function pushActivityEntry(title, meta, tone = "info") {
     },
     ...state.activities,
   ].slice(0, 12);
+
+  showToast(title, meta, tone);
 }
 
-function loginAs(role) {
-  if (!profiles[role]) {
+function loginAs(role, userId = "") {
+  if (role === "customer") {
+    const customer = getCustomerAccountById(userId) || getPrimaryCustomerAccount();
+    if (customer) {
+      loginAsCustomer(customer.id);
+    }
     return;
   }
 
+  if (!staffProfiles[role]) {
+    return;
+  }
+
+  if (refs.bookingModal?.open) {
+    closeDialog(refs.bookingModal);
+  }
+
+  if (role !== "customer") {
+    clearSalonDetailState();
+  }
+
   state.currentUserRole = role;
+  state.currentUserId = staffProfiles[role].id;
   state.workspace = role;
+  state.bookingDraft = null;
+  state.bookingContext = null;
+  state.bookingStep = 1;
   state.activities = [
     {
       id: makeId("activity"),
       title: `Prisijungta kaip ${formatRoleLabel(role)}`,
-      meta: `${profiles[role].name} atidare ${formatRoleLabel(role)} darbo zona.`,
+      meta: `${staffProfiles[role].name} atidare ${formatRoleLabel(role)} darbo zona.`,
       tone: "info",
       createdAt: new Date().toISOString(),
     },
@@ -2526,16 +3451,75 @@ function loginAs(role) {
 
   persistState();
   renderAll();
+  showToast(
+    `Prisijungta kaip ${formatRoleLabel(role)}`,
+    `${staffProfiles[role].name} atidare savo darbo zona.`,
+    "info"
+  );
   closeDialog(refs.authModal);
-
-  if (role === "customer") {
-    scrollToWorkspace();
+  if (role === "customer" && state.activeSalonId) {
+    scrollToSalonDetail();
+    return;
   }
+
+  scrollToWorkspace();
+}
+
+function loginAsCustomer(accountId, options = {}) {
+  const customer = getCustomerAccountById(accountId);
+  if (!customer) {
+    return;
+  }
+
+  if (refs.bookingModal?.open) {
+    closeDialog(refs.bookingModal);
+  }
+
+  if (!options.skipLastLoginUpdate) {
+    updateCustomerAccountRecord(accountId, { lastLoginAt: new Date().toISOString() });
+  }
+  const nextCustomer = getCustomerAccountById(accountId) || customer;
+
+  state.currentUserRole = "customer";
+  state.currentUserId = nextCustomer.id;
+  state.workspace = "customer";
+  state.bookingDraft = null;
+  state.bookingContext = null;
+  state.bookingStep = 1;
+  state.activities = [
+    {
+      id: makeId("activity"),
+      title: "Prisijungta prie kliento paskyros",
+      meta: `${nextCustomer.name} atidare savo rezervaciju ir profilio zona.`,
+      tone: "success",
+      createdAt: new Date().toISOString(),
+    },
+    ...state.activities,
+  ].slice(0, 10);
+
+  persistState();
+  renderAll();
+  showToast("Prisijungta prie kliento paskyros", `${nextCustomer.name} gali matyti savo rezervacijas ir megstamus salonus.`, "success");
+  closeDialog(refs.authModal);
+  if (state.activeSalonId) {
+    scrollToSalonDetail();
+    return;
+  }
+
+  scrollToWorkspace();
 }
 
 function logout() {
+  if (refs.bookingModal?.open) {
+    closeDialog(refs.bookingModal);
+  }
+
   state.currentUserRole = null;
+  state.currentUserId = null;
   state.workspace = "customer";
+  state.bookingDraft = null;
+  state.bookingContext = null;
+  state.bookingStep = 1;
   state.activities = [
     {
       id: makeId("activity"),
@@ -2549,31 +3533,42 @@ function logout() {
 
   persistState();
   renderAll();
+  showToast("Sesija uzdaryta", "Puslapis vel rodomas kaip sveciui.", "warning");
   closeDialog(refs.authModal);
 }
 
 function openBooking(salonId, serviceId = "", selectedTime = "", context = null) {
+  if (!canCurrentUserStartBooking()) {
+    handleUnauthorizedBookingAttempt();
+    return;
+  }
+
   state.bookingDraft = createBookingDraft(salonId, serviceId, selectedTime);
   state.bookingContext = context || { mode: "create", bookingId: null };
-  state.bookingStep = selectedTime ? 2 : 1;
+  state.bookingStep = state.bookingDraft.time ? 2 : 1;
   refs.bookingMessage.textContent = "";
   renderBookingFlow();
   openDialog(refs.bookingModal);
 }
 
 function renderAll() {
+  normalizeRoleBoundaries();
+  applyRoleLayoutState();
   syncControls();
   renderSearchSuggestions();
   renderSearchDatePanel();
   renderHeroTotals();
   renderResultsVisibility();
+  renderActiveFilters();
   if (state.showResults) {
     renderSalons();
   }
+  renderSalonDetail();
   renderWorkspace();
   renderSideRail();
   renderSessionLabel();
   renderActiveStates();
+  renderToast();
   if (state.bookingDraft) {
     renderBookingFlow();
   }
@@ -2584,8 +3579,221 @@ function renderResultsVisibility() {
     return;
   }
 
-  refs.resultsSection.hidden = !state.showResults;
-  refs.resultsSection.setAttribute("aria-hidden", String(!state.showResults));
+  const canSeeMarketplace = canCurrentUserBrowseMarketplace();
+  const shouldShowResults = canSeeMarketplace && state.showResults && !state.activeSalonId;
+  refs.resultsSection.hidden = !shouldShowResults;
+  refs.resultsSection.setAttribute("aria-hidden", String(!shouldShowResults));
+  refs.resultsSection.classList.toggle("results-loading", shouldShowResults && uiState.resultsPending);
+}
+
+function getActiveFilterChips() {
+  const chips = [];
+
+  if (state.filters.category !== "all") {
+    chips.push({ key: "category", label: `Kategorija: ${state.filters.category}` });
+  }
+
+  if (state.filters.query) {
+    chips.push({ key: "query", label: `Paieska: ${state.filters.query}` });
+  }
+
+  if (state.filters.location) {
+    chips.push({ key: "location", label: `Vieta: ${state.filters.location}` });
+  } else if (state.filters.city !== "all") {
+    chips.push({ key: "city", label: `Miestas: ${state.filters.city}` });
+  }
+
+  if (state.filters.date !== "any") {
+    chips.push({ key: "date", label: `Data: ${formatDateLabel(state.filters.date)}` });
+  }
+
+  if (state.filters.requestedTime) {
+    chips.push({ key: "requestedTime", label: `Laikas: ${state.filters.requestedTime}` });
+  }
+
+  if (state.filters.instantOnly) {
+    chips.push({ key: "instantOnly", label: "Momentinis patvirtinimas" });
+  }
+
+  return chips;
+}
+
+function renderActiveFilters() {
+  if (!refs.activeFilterBar || !refs.activeFilterList) {
+    return;
+  }
+
+  const canShow = canCurrentUserBrowseMarketplace() && state.showResults && !state.activeSalonId;
+  const chips = canShow ? getActiveFilterChips() : [];
+  refs.activeFilterBar.hidden = !chips.length;
+
+  if (!chips.length) {
+    refs.activeFilterList.innerHTML = "";
+    return;
+  }
+
+  refs.activeFilterList.innerHTML = `
+    ${chips
+      .map(
+        (chip) => `
+          <button class="active-filter-chip" type="button" data-clear-filter="${chip.key}">
+            <span>${escapeHtml(chip.label)}</span>
+            <strong>x</strong>
+          </button>
+        `
+      )
+      .join("")}
+    <button class="active-filter-reset" type="button" data-clear-all-filters>
+      Isvalyti viska
+    </button>
+  `;
+}
+
+function renderResultsLoadingState() {
+  refs.resultsSummary.textContent = "Ieskome geriausiai tinkanciu salonu...";
+  refs.salonList.innerHTML = `
+    <section class="salon-loading-grid" aria-hidden="true">
+      ${Array.from({ length: 4 }, () => `
+        <article class="salon-skeleton-card">
+          <div class="salon-skeleton-main">
+            <span class="skeleton-line skeleton-line-short"></span>
+            <span class="skeleton-line skeleton-line-title"></span>
+            <span class="skeleton-line"></span>
+            <span class="skeleton-line"></span>
+            <div class="skeleton-chip-row">
+              <span class="skeleton-chip"></span>
+              <span class="skeleton-chip"></span>
+              <span class="skeleton-chip"></span>
+            </div>
+          </div>
+          <div class="salon-skeleton-side">
+            <span class="skeleton-line skeleton-line-short"></span>
+            <span class="skeleton-line"></span>
+            <span class="skeleton-line skeleton-line-short"></span>
+            <div class="skeleton-chip-row">
+              <span class="skeleton-chip"></span>
+              <span class="skeleton-chip"></span>
+            </div>
+          </div>
+        </article>
+      `).join("")}
+    </section>
+  `;
+}
+
+function clearFilterByKey(filterKey) {
+  switch (filterKey) {
+    case "category":
+      state.filters.category = "all";
+      break;
+    case "query":
+      state.filters.query = "";
+      refs.queryInput.value = "";
+      break;
+    case "location":
+      state.filters.location = "";
+      state.filters.city = "all";
+      refs.locationInput.value = "";
+      break;
+    case "city":
+      state.filters.city = "all";
+      state.filters.location = "";
+      refs.locationInput.value = "";
+      break;
+    case "date":
+      state.filters.date = "any";
+      refs.dateSelect.value = "any";
+      if (refs.customDateInput) {
+        refs.customDateInput.value = "";
+      }
+      if (refs.timeInput) {
+        refs.timeInput.value = "";
+      }
+      state.filters.requestedTime = "";
+      break;
+    case "requestedTime":
+      state.filters.requestedTime = "";
+      if (refs.timeInput) {
+        refs.timeInput.value = "";
+      }
+      break;
+    case "instantOnly":
+      state.filters.instantOnly = false;
+      refs.instantOnly.checked = false;
+      break;
+    default:
+      break;
+  }
+}
+
+function showToast(title, message = "", tone = "info") {
+  uiState.toast = {
+    id: makeId("toast"),
+    title,
+    message,
+    tone,
+  };
+
+  if (uiTimers.toast) {
+    window.clearTimeout(uiTimers.toast);
+  }
+
+  renderToast();
+
+  uiTimers.toast = window.setTimeout(() => {
+    clearToast();
+  }, 3400);
+}
+
+function clearToast() {
+  uiState.toast = null;
+  renderToast();
+}
+
+function renderToast() {
+  if (!refs.toastRegion) {
+    return;
+  }
+
+  if (!uiState.toast) {
+    refs.toastRegion.innerHTML = "";
+    refs.toastRegion.classList.remove("visible");
+    return;
+  }
+
+  refs.toastRegion.classList.add("visible");
+  refs.toastRegion.innerHTML = `
+    <article class="toast-card toast-${uiState.toast.tone}">
+      <div class="toast-copy">
+        <strong>${escapeHtml(uiState.toast.title)}</strong>
+        ${uiState.toast.message ? `<p>${escapeHtml(uiState.toast.message)}</p>` : ""}
+      </div>
+      <button class="toast-dismiss" type="button" data-dismiss-toast aria-label="Uzdaryti pranesima">
+        x
+      </button>
+    </article>
+  `;
+}
+
+function runResultsTransition(options = {}) {
+  const shouldScroll = options.scroll !== false;
+
+  if (uiTimers.results) {
+    window.clearTimeout(uiTimers.results);
+  }
+
+  uiState.resultsPending = true;
+  persistState();
+  renderAll();
+
+  if (shouldScroll) {
+    scrollToResults();
+  }
+
+  uiTimers.results = window.setTimeout(() => {
+    uiState.resultsPending = false;
+    renderAll();
+  }, 240);
 }
 
 function renderHeroTotals() {
@@ -2605,14 +3813,120 @@ function renderHeroTotals() {
 function renderSalonCard(salon, index, activeDate) {
   const nextSlots = getAvailableSlots(salon.id, activeDate).slice(0, 3);
   const topServices = salon.services.slice(0, 3);
+  const profile = getSalonProfileSnapshot(salon);
+  const offer = getSalonOffer(salon);
+  const trustSignals = getSalonTrustSignals(salon);
+  const canBook = canCurrentUserStartBooking();
+  const isSalonOwner = state.currentUserRole === "salon" && staffProfiles.salon.salonId === salon.id;
+  const favoriteActive = isFavoriteSalon(salon.id);
+  const primaryServiceId = topServices[0]?.id || salon.services[0]?.id || "";
+  const serviceRows = topServices
+    .map((service) => {
+      if (canBook) {
+        return `
+          <button
+            type="button"
+            class="service-row"
+            data-open-booking
+            data-salon-id="${salon.id}"
+            data-service-id="${service.id}"
+          >
+            <span>
+              <strong>${service.name}</strong><br />
+              <small class="muted">${service.duration} min.</small>
+            </span>
+            <span class="price-tag">${service.price} EUR</span>
+          </button>
+        `;
+      }
+
+      return `
+        <div class="service-row">
+          <span>
+            <strong>${service.name}</strong><br />
+            <small class="muted">${service.duration} min.</small>
+          </span>
+          <span class="price-tag">${service.price} EUR</span>
+        </div>
+      `;
+    })
+    .join("");
+
+  const slotItems = nextSlots
+    .map((slot) => {
+      if (canBook) {
+        return `
+          <button
+            type="button"
+            class="slot-chip"
+            data-open-booking
+            data-salon-id="${salon.id}"
+            data-service-id="${primaryServiceId}"
+            data-slot-time="${slot}"
+          >
+            ${slot}
+          </button>
+        `;
+      }
+
+      return `<span class="slot-chip">${slot}</span>`;
+    })
+    .join("");
+
+  const detailAction = canCurrentUserBrowseMarketplace()
+    ? `
+      <button class="ghost-button" type="button" data-open-salon data-salon-id="${salon.id}">
+        Perziureti salona
+      </button>
+    `
+    : "";
+  const favoriteAction = canCurrentUserBrowseMarketplace()
+    ? `
+      <button class="ghost-button ${favoriteActive ? "favorite-active" : ""}" type="button" data-toggle-favorite data-salon-id="${salon.id}">
+        ${favoriteActive ? "Issaugota" : "Issaugoti"}
+      </button>
+    `
+    : "";
+
+  let actionMarkup = `
+    ${detailAction}
+    ${favoriteAction}
+    <button class="primary-button" type="button" data-open-booking data-salon-id="${salon.id}">
+      Rezervuoti
+    </button>
+  `;
+
+  if (canBook) {
+    actionMarkup = `
+      ${detailAction}
+      ${favoriteAction}
+      <button class="primary-button" type="button" data-open-booking data-salon-id="${salon.id}">
+        Rezervuoti
+      </button>
+    `;
+  } else if (isSalonOwner) {
+    actionMarkup = `
+      <button class="ghost-button" type="button" data-switch-workspace="salon">
+        Atidaryti kalendoriu
+      </button>
+    `;
+  } else if (state.currentUserRole === "admin") {
+    actionMarkup = `
+      <button class="ghost-button" type="button" data-switch-workspace="admin">
+        Atidaryti statistika
+      </button>
+    `;
+  } else if (state.currentUserRole === "salon") {
+    actionMarkup = `<span class="muted">Salono paskyra gali tik perziureti rezervuotus laikus.</span>`;
+  }
 
   return `
     <article class="salon-card reveal" style="animation-delay:${Math.min(index * 80, 320)}ms">
       <div class="salon-main">
         <div class="salon-head">
           <div>
-            <p class="salon-city">${salon.city} | ${salon.neighborhood}</p>
-            <h3 class="salon-name">${salon.name}</h3>
+            <p class="salon-city">${escapeHtml(salon.city)} | ${escapeHtml(salon.neighborhood)}</p>
+            <h3 class="salon-name">${escapeHtml(salon.name)}</h3>
           </div>
           <span class="status-pill ${salon.instant ? "" : "status-pill-soft"}">${
             salon.instant ? "Momentinis" : "Patvirtina per 30 min."
@@ -2622,32 +3936,22 @@ function renderSalonCard(salon, index, activeDate) {
         <p class="salon-meta">${salon.rating.toFixed(1)} * | ${salon.reviews} atsiliepimai | nuo ${
           salon.priceFrom
         } EUR</p>
-        <p class="salon-description">${salon.description}</p>
+        <p class="salon-description">${escapeHtml(salon.description)}</p>
+
+        <div class="salon-offer-strip">
+          <span class="eyebrow">${escapeHtml(offer.label)}</span>
+          <strong>${escapeHtml(offer.title)}</strong>
+          <p>${escapeHtml(offer.description)}</p>
+        </div>
+
+        <p class="salon-local-note">${escapeHtml(profile.neighborhoodNote)}</p>
 
         <div class="feature-tags">
-          ${salon.features.map((feature) => `<span class="feature-tag">${feature}</span>`).join("")}
+          ${salon.features.map((feature) => `<span class="feature-tag">${escapeHtml(feature)}</span>`).join("")}
         </div>
 
         <div class="service-list">
-          ${topServices
-            .map((service) => {
-              return `
-                <button
-                  type="button"
-                  class="service-row"
-                  data-open-booking
-                  data-salon-id="${salon.id}"
-                  data-service-id="${service.id}"
-                >
-                  <span>
-                    <strong>${service.name}</strong><br />
-                    <small class="muted">${service.duration} min.</small>
-                  </span>
-                  <span class="price-tag">${service.price} EUR</span>
-                </button>
-              `;
-            })
-            .join("")}
+          ${serviceRows}
         </div>
       </div>
 
@@ -2661,44 +3965,408 @@ function renderSalonCard(salon, index, activeDate) {
             <strong>${salon.repeatRate}%</strong>
             <span class="muted">griztantys klientai</span>
           </div>
+          <div class="list-row">
+            <strong>${escapeHtml(profile.languagesLabel)}</strong>
+            <span class="muted">kalbos salone</span>
+          </div>
+        </div>
+
+        <div class="salon-side-note">
+          <strong>${escapeHtml(trustSignals[0].title)}</strong>
+          <p>${escapeHtml(trustSignals[0].text)}</p>
         </div>
 
         <div>
           <p class="status-label">${formatDateLabel(activeDate)} laisvi laikai</p>
           <div class="slot-list">
-            ${nextSlots
-              .map((slot) => {
-                return `
-                  <button
-                    type="button"
-                    class="slot-chip"
-                    data-open-booking
-                    data-salon-id="${salon.id}"
-                    data-service-id="${topServices[0].id}"
-                    data-slot-time="${slot}"
-                  >
-                    ${slot}
-                  </button>
-                `;
-              })
-              .join("")}
+            ${slotItems}
           </div>
         </div>
 
         <div class="salon-actions">
-          <button class="primary-button" type="button" data-open-booking data-salon-id="${salon.id}">
-            Rezervuoti
-          </button>
-          <button class="ghost-button" type="button" data-switch-workspace="salon">
-            Atidaryti panele
-          </button>
+          ${actionMarkup}
         </div>
       </div>
     </article>
   `;
 }
 
+function renderSalonDetail() {
+  if (!refs.salonDetailSection || !refs.salonDetailShell) {
+    return;
+  }
+
+  const canShowDetail = Boolean(state.activeSalonId && canCurrentUserBrowseMarketplace());
+  const salon = canShowDetail ? getSalon(state.activeSalonId) : null;
+  refs.salonDetailSection.hidden = !salon;
+  refs.salonDetailSection.setAttribute("aria-hidden", String(!salon));
+
+  if (!salon) {
+    refs.salonDetailShell.innerHTML = "";
+    return;
+  }
+
+  const leadSpecialist = salon.specialists[0];
+  const gallery = getSalonGallery(salon);
+  const reviews = getSalonReviews(salon);
+  const workingHours = getSalonWorkingHours(salon);
+  const policies = getSalonPolicies(salon);
+  const address = getSalonAddress(salon);
+  const profile = getSalonProfileSnapshot(salon);
+  const offer = getSalonOffer(salon);
+  const trustSignals = getSalonTrustSignals(salon);
+  const mapConfig = getSalonMapConfig(salon, address);
+  const nextSlots = getAvailableSlots(salon.id, getActiveResultsDate()).slice(0, 5);
+  const favoriteActive = isFavoriteSalon(salon.id);
+  const detailPrimaryAction = canCurrentUserStartBooking()
+    ? `
+      <button class="primary-button" type="button" data-open-booking data-salon-id="${salon.id}">
+        Rezervuoti vizita
+      </button>
+    `
+    : `
+      <button class="primary-button" type="button" data-open-auth>
+        Prisijungti rezervacijai
+      </button>
+    `;
+  const favoriteAction = canCurrentUserBrowseMarketplace()
+    ? `
+      <button class="ghost-button ${favoriteActive ? "favorite-active" : ""}" type="button" data-toggle-favorite data-salon-id="${salon.id}">
+        ${favoriteActive ? "Issaugota vieta" : "Issaugoti salona"}
+      </button>
+    `
+    : "";
+
+  refs.salonDetailShell.innerHTML = `
+    <div class="salon-detail-shell">
+      <div class="salon-detail-topbar">
+        <button class="ghost-button" type="button" data-close-salon-detail>
+          Grizti i salonu sarasa
+        </button>
+        <div class="salon-detail-breadcrumbs">
+          <span>Salonai</span>
+          <span>/</span>
+          <strong>${escapeHtml(salon.name)}</strong>
+        </div>
+      </div>
+
+      <article class="salon-detail-hero">
+        <div class="salon-detail-hero-copy">
+          <p class="eyebrow">${escapeHtml(salon.city)} | ${escapeHtml(salon.neighborhood)} | ${escapeHtml(salon.category)}</p>
+          <h1>${escapeHtml(salon.name)}</h1>
+          <p class="salon-detail-description">${escapeHtml(salon.description)}</p>
+
+          <div class="salon-detail-stat-row">
+            <span class="status-chip">${salon.rating.toFixed(1)} * ivertinimas</span>
+            <span class="status-chip">${salon.reviews} atsiliepimai</span>
+            <span class="status-chip ${salon.instant ? "" : "info"}">${salon.instant ? "Momentinis patvirtinimas" : "Patvirtinimas iki 30 min."}</span>
+          </div>
+
+          <div class="feature-tags">
+            ${salon.features.map((feature) => `<span class="feature-tag">${escapeHtml(feature)}</span>`).join("")}
+          </div>
+
+          <div class="salon-insight-banner">
+            <span class="eyebrow">${escapeHtml(offer.label)}</span>
+            <strong>${escapeHtml(offer.title)}</strong>
+            <p>${escapeHtml(offer.description)}</p>
+          </div>
+
+          <div class="salon-detail-actions">
+            ${detailPrimaryAction}
+            ${favoriteAction}
+            <button class="ghost-button" type="button" data-salon-scroll="services">Kainynas</button>
+            <button class="ghost-button" type="button" data-salon-scroll="specialists">Meistrai</button>
+            <button class="ghost-button" type="button" data-salon-scroll="reviews">Atsiliepimai</button>
+          </div>
+        </div>
+
+        <div class="salon-detail-gallery">
+          <figure class="salon-detail-gallery-main">
+            <img src="${gallery[0]}" alt="${escapeHtml(salon.name)} erdve" loading="lazy" referrerpolicy="no-referrer" />
+          </figure>
+          <div class="salon-detail-gallery-stack">
+            <figure class="salon-detail-gallery-small">
+              <img src="${gallery[1]}" alt="${escapeHtml(salon.category)} proceduros ${escapeHtml(salon.name)}" loading="lazy" referrerpolicy="no-referrer" />
+            </figure>
+
+            <article class="salon-detail-gallery-note">
+              <span class="eyebrow">Dazniausiai rezervuoja</span>
+              <strong>${escapeHtml(salon.services[0].name)}</strong>
+              <p>${escapeHtml(trustSignals[1].text)}</p>
+            </article>
+
+            <article class="salon-detail-gallery-lead">
+              <img src="${leadSpecialist.photo}" alt="${escapeHtml(leadSpecialist.name)}" loading="lazy" referrerpolicy="no-referrer" />
+              <div>
+                <span class="eyebrow">Pagrindinis specialistas</span>
+                <strong>${escapeHtml(leadSpecialist.name)}</strong>
+                <p>${escapeHtml(leadSpecialist.role)} | uzimtumas ${leadSpecialist.load}%</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </article>
+
+      <div class="salon-detail-layout">
+        <div class="salon-detail-main">
+          <article class="salon-detail-card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Apie salona</p>
+                <h3>Kas svarbiausia pirmajam vizitui</h3>
+              </div>
+              <span class="status-pill status-pill-soft">Nuo ${profile.foundedYear} m.</span>
+            </div>
+
+            <div class="salon-profile-grid">
+              <article class="salon-profile-item">
+                <span>Kam labiausiai tinka</span>
+                <strong>${escapeHtml(salon.category)} klientams</strong>
+                <p>${escapeHtml(profile.audience)}</p>
+              </article>
+              <article class="salon-profile-item">
+                <span>Atmosfera</span>
+                <strong>Ritmas ir aptarnavimas</strong>
+                <p>${escapeHtml(profile.vibe)}</p>
+              </article>
+              <article class="salon-profile-item">
+                <span>Kalbos</span>
+                <strong>${escapeHtml(profile.languagesLabel)}</strong>
+                <p>${escapeHtml(profile.arrivalNote)}</p>
+              </article>
+              <article class="salon-profile-item">
+                <span>Rajono ritmas</span>
+                <strong>${escapeHtml(salon.neighborhood)}</strong>
+                <p>${escapeHtml(profile.neighborhoodNote)}</p>
+              </article>
+            </div>
+
+            <div class="salon-trust-list">
+              ${trustSignals
+                .map(
+                  (signal) => `
+                    <article class="salon-trust-item">
+                      <strong>${escapeHtml(signal.title)}</strong>
+                      <p>${escapeHtml(signal.text)}</p>
+                    </article>
+                  `
+                )
+                .join("")}
+            </div>
+          </article>
+
+          <article class="salon-detail-card" id="salon-detail-services">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Kainynas</p>
+                <h3>Paslaugos ir rezervavimo variantai</h3>
+              </div>
+              <span class="status-pill">${salon.services.length} paslaugos</span>
+            </div>
+            <div class="salon-service-menu">
+              ${salon.services.map((service) => renderSalonDetailServiceRow(salon, service)).join("")}
+            </div>
+          </article>
+
+          <article class="salon-detail-card" id="salon-detail-specialists">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Komanda</p>
+                <h3>Meistrai, su kuriais gali rezervuoti</h3>
+              </div>
+              <span class="status-pill status-pill-soft">${salon.specialists.length} specialistai</span>
+            </div>
+            <div class="salon-specialist-directory">
+              ${salon.specialists.map((specialist) => renderSalonDetailSpecialistCard(specialist)).join("")}
+            </div>
+          </article>
+
+          <article class="salon-detail-card" id="salon-detail-reviews">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Atsiliepimai</p>
+                <h3>Ka klientai dazniausiai pamini po vizito</h3>
+              </div>
+              <span class="status-pill">${salon.rating.toFixed(1)} * vidurkis</span>
+            </div>
+            <div class="salon-review-grid">
+              ${reviews.map(renderSalonReviewCard).join("")}
+            </div>
+          </article>
+        </div>
+
+        <aside class="salon-detail-side">
+          <article class="salon-detail-card salon-detail-sticky">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Greita informacija</p>
+                <h3>Adresas, laikai ir rezervacija</h3>
+              </div>
+            </div>
+
+            <div class="list-stack">
+              <div class="service-row">
+                <span>
+                  <strong>${escapeHtml(address.primary)}</strong><br />
+                  <small class="muted">${escapeHtml(address.secondary)}</small>
+                </span>
+              </div>
+
+              <div class="service-row">
+                <span>
+                  <strong>Nuo ${salon.priceFrom} EUR</strong><br />
+                  <small class="muted">${salon.repeatRate}% grizta pakartotinai</small>
+                </span>
+                <span class="status-chip">${salon.occupancy}% uzimta</span>
+              </div>
+
+              <div>
+                <p class="status-label">${formatDateLabel(getActiveResultsDate())} laisvi laikai</p>
+                <div class="slot-list">
+                  ${
+                    nextSlots.length
+                      ? nextSlots
+                          .map((slot) =>
+                            canCurrentUserStartBooking()
+                              ? `<button class="slot-chip" type="button" data-open-booking data-salon-id="${salon.id}" data-service-id="${salon.services[0].id}" data-slot-time="${slot}">${slot}</button>`
+                              : `<span class="slot-chip">${slot}</span>`
+                          )
+                          .join("")
+                      : `<p class="muted">Siandien laisvu laiku nebeliko.</p>`
+                  }
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="salon-detail-card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Zemelapis</p>
+                <h3>Kur rasti salona</h3>
+              </div>
+            </div>
+
+            <div class="salon-map-frame">
+              <iframe
+                src="${escapeHtml(mapConfig.embedUrl)}"
+                title="${escapeHtml(salon.name)} zemelapis"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+              ></iframe>
+            </div>
+
+            <div class="salon-map-meta">
+              <div>
+                <strong>${escapeHtml(address.primary)}</strong>
+                <p>${escapeHtml(address.secondary)}</p>
+              </div>
+              <a class="ghost-button" href="${escapeHtml(mapConfig.openUrl)}" target="_blank" rel="noreferrer">
+                Atidaryti zemelapyje
+              </a>
+            </div>
+          </article>
+
+          <article class="salon-detail-card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Darbo laikas</p>
+                <h3>Kada salonas dirba</h3>
+              </div>
+            </div>
+            <div class="salon-hours-list">
+              ${workingHours.map(renderSalonHourRow).join("")}
+            </div>
+          </article>
+
+          <article class="salon-detail-card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Taisykles</p>
+                <h3>Kodel klientams cia patogu</h3>
+              </div>
+            </div>
+            <div class="salon-policy-list">
+              ${policies.map((policy) => `<div class="salon-policy-item">${escapeHtml(policy)}</div>`).join("")}
+            </div>
+          </article>
+        </aside>
+      </div>
+    </div>
+  `;
+}
+
+function renderSalonDetailServiceRow(salon, service) {
+  const actionMarkup = canCurrentUserStartBooking()
+    ? `
+      <button class="ghost-button" type="button" data-open-booking data-salon-id="${salon.id}" data-service-id="${service.id}">
+        Rezervuoti
+      </button>
+    `
+    : `
+      <button class="ghost-button" type="button" data-open-auth>
+        Prisijungti
+      </button>
+    `;
+
+  return `
+    <div class="salon-service-row">
+      <div>
+        <strong>${escapeHtml(service.name)}</strong>
+        <p>${service.duration} min. | rekomenduojama su ${escapeHtml(salon.specialists[0].name)}</p>
+      </div>
+      <span class="price-tag">${service.price} EUR</span>
+      ${actionMarkup}
+    </div>
+  `;
+}
+
+function renderSalonDetailSpecialistCard(specialist) {
+  return `
+    <article class="salon-specialist-card">
+      <img src="${specialist.photo}" alt="${escapeHtml(specialist.name)}" loading="lazy" referrerpolicy="no-referrer" />
+      <div class="salon-specialist-card-copy">
+        <strong>${escapeHtml(specialist.name)}</strong>
+        <span class="specialist-role">${escapeHtml(specialist.role)}</span>
+        <p>${escapeHtml(specialist.bio)}</p>
+        <small>Darbo uzimtumas ${specialist.load}%</small>
+      </div>
+    </article>
+  `;
+}
+
+function renderSalonReviewCard(review) {
+  return `
+    <article class="salon-review-card">
+      <div class="salon-review-top">
+        <strong>${escapeHtml(review.author)}</strong>
+        <span class="status-chip">${review.rating.toFixed(1)} *</span>
+      </div>
+      <p>${escapeHtml(review.text)}</p>
+      <div class="salon-review-meta">
+        <span>${escapeHtml(review.context)}</span>
+        <span>${escapeHtml(review.dateLabel)}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderSalonHourRow(item) {
+  return `
+    <div class="salon-hour-row">
+      <span>${escapeHtml(item.day)}</span>
+      <strong>${escapeHtml(item.hours)}</strong>
+    </div>
+  `;
+}
+
 function renderSalons() {
+  if (uiState.resultsPending) {
+    renderResultsLoadingState();
+    return;
+  }
+
   const filtered = getFilteredSalons();
   const activeDate = getActiveResultsDate();
   const categoryOrder = ["Plaukai", "Nagai", "Veidas", "Masazai"];
@@ -2749,6 +4417,194 @@ function renderSalons() {
     .join("");
 }
 
+function getSalonGallery(salon) {
+  const pool = salonDetailMedia[salon.category] || salonDetailMedia.Plaukai;
+  const offset = getStableNumber(`${salon.id}-gallery`) % pool.length;
+  return Array.from({ length: 3 }, (_, index) => pool[(offset + index) % pool.length]);
+}
+
+function applyTemplate(template, tokens = {}) {
+  return Object.entries(tokens).reduce((result, [key, value]) => {
+    return result.split(`%{${key}}`).join(String(value));
+  }, template);
+}
+
+function getSalonProfileSnapshot(salon) {
+  const seed = getStableNumber(`${salon.id}-profile`);
+  const languages = salonLanguagesByCity[salon.city] || ["LT"];
+  const audiencePool = realisticSalonAudienceNotes[salon.category] || realisticSalonAudienceNotes.Plaukai;
+  const vibePool = realisticSalonVibeNotes[salon.category] || realisticSalonVibeNotes.Plaukai;
+
+  return {
+    foundedYear: 2016 + (seed % 8),
+    languages,
+    languagesLabel: languages.join(", "),
+    audience: audiencePool[seed % audiencePool.length],
+    vibe: vibePool[Math.floor(seed / 3) % vibePool.length],
+    neighborhoodNote:
+      neighborhoodArrivalNotes[salon.neighborhood] ||
+      "Patogu suderinti vizita su dienos planais, taciau vakariniai laikai uzsipildo greiciausiai.",
+    arrivalNote: salon.instant
+      ? "Momentinius laikus lengviausia pagauti darbo dienomis, o savaitgalio slotus verta pasiimti anksciau."
+      : "Patvirtinimai dazniausiai sukrenta darbo valandomis, todel is anksto suplanuotas vizitas cia jauciasi saugiausiai.",
+  };
+}
+
+function getSalonOffer(salon) {
+  const seed = getStableNumber(`${salon.id}-offer`);
+  const templates = salonOfferTemplates[salon.category] || salonOfferTemplates.Plaukai;
+  const template = templates[seed % templates.length];
+  const primaryService = salon.services[0] || { name: "Populiari paslauga" };
+  const secondaryService = salon.services[1] || primaryService;
+
+  return {
+    label: template.label,
+    title: applyTemplate(template.title, {
+      service: primaryService.name,
+      service2: secondaryService.name.toLowerCase(),
+      price: salon.priceFrom,
+    }),
+    description: applyTemplate(template.description, {
+      service: primaryService.name,
+      service2: secondaryService.name.toLowerCase(),
+      price: salon.priceFrom,
+    }),
+  };
+}
+
+function getSalonTrustSignals(salon) {
+  const profile = getSalonProfileSnapshot(salon);
+  const primaryService = salon.services[0] || { name: "Populiari paslauga" };
+  const secondaryService = salon.services[1] || primaryService;
+  const bookingWindowText =
+    salon.occupancy >= 80
+      ? "Vakariniai laikai dazniausiai uzsipildo per 4-6 dienas."
+      : salon.instant
+        ? "Daznai randama laisvu laiku per artimiausias 24-48 val."
+        : "Patogiausia rezervuoti bent 2-4 dienas i prieki, ypac savaitgaliui.";
+
+  return [
+    {
+      title: "Rezervavimo tempas",
+      text: bookingWindowText,
+    },
+    {
+      title: "Dazniausiai renkasi",
+      text: `${primaryService.name} ir ${secondaryService.name.toLowerCase()} sudaro daugiausia pakartotiniu vizitu.`,
+    },
+    {
+      title: "Komandos ritmas",
+      text: `Salone aptarnaujama ${profile.languagesLabel}, o ${salon.repeatRate}% klientu grizta pakartotinai.`,
+    },
+  ];
+}
+
+function getSalonReviews(salon) {
+  const templates = realisticSalonReviewTemplates[salon.category] || realisticSalonReviewTemplates.Plaukai;
+  const seed = getStableNumber(`${salon.id}-reviews`);
+  const leadIndex = seed % salon.specialists.length;
+
+  return Array.from({ length: 4 }, (_, index) => {
+    const author = realisticSalonReviewAuthors[(seed + index) % realisticSalonReviewAuthors.length];
+    const service = salon.services[(seed + index) % salon.services.length];
+    const specialist = salon.specialists[(leadIndex + index) % salon.specialists.length];
+    const template = templates[(seed + index) % templates.length];
+
+    return {
+      author,
+      rating: Math.max(4.7, Math.min(5, salon.rating - (index % 2) * 0.1)),
+      service: service.name,
+      context: `${service.name} su ${specialist.name}`,
+      dateLabel: realisticSalonReviewDates[(seed + index) % realisticSalonReviewDates.length],
+      text: applyTemplate(template, {
+        specialist: specialist.name,
+        service: service.name.toLowerCase(),
+      }),
+    };
+  });
+}
+
+function getSalonWorkingHours(salon) {
+  const firstSlot = salon.baseSlots[0] || "09:00";
+  const lastSlot = salon.baseSlots[salon.baseSlots.length - 1] || "18:00";
+
+  return [
+    { day: "Pirmadienis", hours: `${firstSlot} - ${shiftTimeValue(lastSlot, 30)}` },
+    { day: "Antradienis", hours: `${firstSlot} - ${shiftTimeValue(lastSlot, 30)}` },
+    { day: "Treciadienis", hours: `${firstSlot} - ${shiftTimeValue(lastSlot, 30)}` },
+    { day: "Ketvirtadienis", hours: `${firstSlot} - ${shiftTimeValue(lastSlot, 30)}` },
+    { day: "Penktadienis", hours: `${firstSlot} - ${shiftTimeValue(lastSlot, 30)}` },
+    { day: "Sestadienis", hours: `${shiftTimeValue(firstSlot, 45)} - ${shiftTimeValue(lastSlot, -15)}` },
+    { day: "Sekmadienis", hours: salon.instant ? "Pagal isankstine rezervacija" : "Nedirba" },
+  ];
+}
+
+function getSalonPolicies(salon) {
+  const seed = getStableNumber(`${salon.id}-policies`);
+  const templates = salonPolicyTemplates[salon.category] || salonPolicyTemplates.Plaukai;
+  const primaryService = salon.services[0] || { name: "paslauga", price: salon.priceFrom };
+  const deposit = Math.max(10, Math.round((primaryService.price || salon.priceFrom) * 0.2));
+
+  return [
+    salon.instant
+      ? "Momentiniai laikai rezervuojami iskart, o salono komanda ju papildomai nebetvirtina rankiniu budu."
+      : "Rezervacijos patvirtinamos salono darbo valandomis ir dazniausiai atsakomos per 30 min.",
+    applyTemplate(templates[seed % templates.length], {
+      deposit,
+      service: primaryService.name.toLowerCase(),
+    }),
+    "Nemokamai atsaukti ar perplanuoti galima iki 24 val. pries vizita, veliau rezervacija gali buti apmokestinta pagal salono taisykles.",
+  ];
+}
+
+function getSalonAddress(salon) {
+  const streets = cityStreetPool[salon.city] || ["Centrine g."];
+  const building = 6 + (getStableNumber(`${salon.id}-address`) % 24);
+  const street = streets[getStableNumber(`${salon.id}-street`) % streets.length];
+  const floor = 1 + (getStableNumber(`${salon.id}-floor`) % 4);
+  const room = 10 + (getStableNumber(`${salon.id}-room`) % 18);
+
+  return {
+    primary: `${street} ${building}, ${salon.city}`,
+    secondary: `${salon.neighborhood} | ${salon.category} studija | ${floor} a., studija ${room}`,
+  };
+}
+
+function getSalonMapConfig(salon, address = getSalonAddress(salon)) {
+  const neighborhoodKey = `${salon.city}-${salon.neighborhood}`;
+  const defaultCityKey = `${salon.city}-default`;
+  const coordinates = salonMapCoordinates[neighborhoodKey] || salonMapCoordinates[defaultCityKey] || { lat: 54.6872, lon: 25.2797 };
+  const mapPadding = 0.014;
+  const minLon = (coordinates.lon - mapPadding).toFixed(4);
+  const maxLon = (coordinates.lon + mapPadding).toFixed(4);
+  const minLat = (coordinates.lat - mapPadding).toFixed(4);
+  const maxLat = (coordinates.lat + mapPadding).toFixed(4);
+  const markerLat = coordinates.lat.toFixed(4);
+  const markerLon = coordinates.lon.toFixed(4);
+  const mapLabel = encodeURIComponent(`${salon.name}, ${address.primary}`);
+
+  return {
+    embedUrl:
+      `https://www.openstreetmap.org/export/embed.html?bbox=${minLon}%2C${minLat}%2C${maxLon}%2C${maxLat}` +
+      `&layer=mapnik&marker=${markerLat}%2C${markerLon}`,
+    openUrl:
+      `https://www.openstreetmap.org/?mlat=${markerLat}&mlon=${markerLon}#map=15/${markerLat}/${markerLon}&query=${mapLabel}`,
+  };
+}
+
+function getStableNumber(value) {
+  return Array.from(String(value)).reduce((sum, character, index) => sum + character.charCodeAt(0) * (index + 1), 0);
+}
+
+function shiftTimeValue(timeValue, minutesShift) {
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + minutesShift;
+  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const nextHours = String(Math.floor(normalized / 60)).padStart(2, "0");
+  const nextMinutes = String(normalized % 60).padStart(2, "0");
+  return `${nextHours}:${nextMinutes}`;
+}
+
 function renderWorkspace() {
   if (state.workspace === "customer") {
     refs.workspacePanel.innerHTML = renderCustomerWorkspace();
@@ -2767,12 +4623,13 @@ function renderCustomerWorkspace() {
   if (state.currentUserRole !== "customer") {
     return renderGuard(
       "Prisijunk prie savo paskyros",
-      "Paskyroje matysi artimiausius vizitus, mokejimus, islaidas ir pakartotines rezervacijas.",
+      "Rezervuoti gali ir be paskyros, bet prisijungus matysi savo vizitus, mokejimus ir galesi juos valdyti vienoje vietoje.",
       "Atidaryti paskyra"
     );
   }
 
-  const customer = profiles.customer;
+  const customer = getCurrentUser();
+  const favoriteSalons = (customer.favoriteSalons || []).map((salonId) => getSalon(salonId)).filter(Boolean);
   const bookings = getCustomerBookings(customer);
   const upcomingBookings = bookings.filter(isUpcomingBooking);
   const bookingHistory = bookings
@@ -2797,8 +4654,8 @@ function renderCustomerWorkspace() {
           <span>aktyvios rezervacijos</span>
         </article>
         <article class="stat-card">
-          <strong>${upcomingBookings.reduce((sum, booking) => sum + booking.totalAmount, 0)} EUR</strong>
-          <span>planuojama verte</span>
+          <strong>${favoriteSalons.length}</strong>
+          <span>issaugoti salonai</span>
         </article>
         <article class="stat-card">
           <strong>${customer.loyaltyCredits}</strong>
@@ -2858,17 +4715,68 @@ function renderCustomerWorkspace() {
             <div class="service-row">
               <span>
                 <strong>Megstami salonai</strong><br />
-                <small class="muted">${customer.favoriteSalons.map((salonId) => getSalon(salonId).name).join(", ")}</small>
+                <small class="muted">${
+                  favoriteSalons.length
+                    ? favoriteSalons.map((salon) => salon.name).join(", ")
+                    : "Issaugok salonus is saraso ir greitai prie ju grizk"
+                }</small>
               </span>
-              <button class="ghost-button" type="button" data-open-booking data-salon-id="${customer.favoriteSalons[0]}">
-                Rezervuoti
-              </button>
+              ${
+                favoriteSalons[0]
+                  ? `<button class="ghost-button" type="button" data-open-booking data-salon-id="${favoriteSalons[0].id}">
+                      Rezervuoti
+                    </button>`
+                  : `<button class="ghost-button" type="button" data-open-salon data-salon-id="luna">
+                      Rasti salona
+                    </button>`
+              }
             </div>
           </div>
         </article>
       </div>
 
       <div class="panel-grid">
+        <article class="panel-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Issaugota</p>
+              <h4>Tavo megstami salonai</h4>
+            </div>
+          </div>
+          <div class="booking-card-grid">
+            ${
+              favoriteSalons.length
+                ? favoriteSalons
+                    .slice(0, 4)
+                    .map(
+                      (salon) => `
+                        <article class="booking-card compact">
+                          <div class="booking-card-header">
+                            <div>
+                              <div class="booking-card-title">
+                                <strong>${salon.name}</strong>
+                              </div>
+                              <p>${salon.city}, ${salon.neighborhood}</p>
+                            </div>
+                            <span class="status-chip">${salon.rating.toFixed(1)} *</span>
+                          </div>
+                          <div class="booking-card-actions">
+                            <button class="ghost-button" type="button" data-open-salon data-salon-id="${salon.id}">
+                              Perziureti
+                            </button>
+                            <button class="primary-button" type="button" data-open-booking data-salon-id="${salon.id}">
+                              Rezervuoti
+                            </button>
+                          </div>
+                        </article>
+                      `
+                    )
+                    .join("")
+                : `<p>Kol kas neturi issaugotu salonu. Pazymek juos salono kortelese ar vidiniuose puslapiuose.</p>`
+            }
+          </div>
+        </article>
+
         <article class="panel-card">
           <div class="card-header">
             <div>
@@ -2884,19 +4792,19 @@ function renderCustomerWorkspace() {
             }
           </div>
         </article>
-
-        <article class="panel-card">
-          <div class="card-header">
-            <div>
-              <p class="eyebrow">Mokejimai</p>
-              <h4>Paskutiniai atsiskaitymai</h4>
-            </div>
-          </div>
-          <div class="payments-list">
-            ${payments.length ? payments.map(renderPaymentRow).join("") : `<p>Nera mokejimu istorijos.</p>`}
-          </div>
-        </article>
       </div>
+
+      <article class="panel-card">
+        <div class="card-header">
+          <div>
+            <p class="eyebrow">Mokejimai</p>
+            <h4>Paskutiniai atsiskaitymai</h4>
+          </div>
+        </div>
+        <div class="payments-list">
+          ${payments.length ? payments.map(renderPaymentRow).join("") : `<p>Nera mokejimu istorijos.</p>`}
+        </div>
+      </article>
     </section>
   `;
 }
@@ -2910,12 +4818,12 @@ function renderSalonWorkspace() {
     );
   }
 
-  const manager = profiles.salon;
+  const manager = staffProfiles.salon;
   const salon = getSalon(manager.salonId);
   const salonBookings = getSalonBookings(salon.id);
   const activeBookings = salonBookings.filter((booking) => !isClosedBooking(booking));
   const todaysBookings = activeBookings.filter((booking) => booking.date === upcomingDates[0]);
-  const pendingBookings = activeBookings.filter((booking) => booking.status === "Uzstatas");
+  const pendingBookings = activeBookings.filter((booking) => booking.status === "Laukia patvirtinimo" || booking.status === "Uzstatas");
   const nextBookings = activeBookings.filter(isUpcomingBooking).slice(0, 6);
   const salonPayments = state.payments.filter((payment) =>
     salonBookings.some((booking) => booking.id === payment.bookingId)
@@ -2938,13 +4846,24 @@ function renderSalonWorkspace() {
         </article>
         <article class="stat-card">
           <strong>${pendingBookings.length}</strong>
-          <span>laukia patvirtinimo</span>
+          <span>negalutiniai statusai</span>
         </article>
         <article class="stat-card">
           <strong>${sumAmounts(salonPayments)} EUR</strong>
           <span>surinkta per demo</span>
         </article>
       </div>
+
+      <article class="panel-card panel-card-calendar">
+        <div class="card-header">
+          <div>
+            <p class="eyebrow">Darbo kalendorius</p>
+            <h4>Artimiausiu dienu uzimtumas pagal laikus</h4>
+          </div>
+          <span class="status-pill info">${upcomingDates.length} dienu vaizdas</span>
+        </div>
+        ${renderSalonWorkCalendar(salon, activeBookings)}
+      </article>
 
       <div class="panel-grid">
         <article class="panel-card">
@@ -3168,13 +5087,26 @@ function renderAdminWorkspace() {
 
 function renderSideRail() {
   const currentUser = getCurrentUser();
+  const customerRailMeta =
+    currentUser?.role === "customer"
+      ? `
+        <div class="list-row">
+          <span class="muted">issaugota salonu</span>
+          <strong>${currentUser.favoriteSalons.length}</strong>
+        </div>
+        <div class="list-row">
+          <span class="muted">lojalumo taskai</span>
+          <strong>${currentUser.loyaltyCredits}</strong>
+        </div>
+      `
+      : "";
   refs.sessionCard.innerHTML = currentUser
     ? `
       <div class="list-stack">
         <div class="service-row">
           <span>
             <strong>${currentUser.name}</strong><br />
-            <small class="muted">${formatRoleLabel(currentUser.role)}</small>
+            <small class="muted">${formatRoleLabel(currentUser.role)} | ${getRoleCapabilitySummary(currentUser.role)}</small>
           </span>
           <span class="status-chip">${currentUser.role}</span>
         </div>
@@ -3182,15 +5114,118 @@ function renderSideRail() {
           <span class="muted">${currentUser.email}</span>
           <button class="ghost-button" type="button" data-logout>Atsijungti</button>
         </div>
+        ${customerRailMeta}
       </div>
     `
     : `
       <div class="list-stack">
         <p>Aktyvi sesija dar nepasirinkta.</p>
-        <button class="primary-button" type="button" data-open-auth>Pasirinkti role</button>
+        <button class="primary-button" type="button" data-open-auth data-open-auth-view="login">Prisijungti arba registruotis</button>
       </div>
     `;
 
+  if (!currentUser) {
+    refs.activityEyebrow.textContent = "Prieiga";
+    refs.activityTitle.textContent = "Ka daro kiekviena paskyra";
+    refs.summaryEyebrow.textContent = "Role";
+    refs.summaryTitle.textContent = "Atskirtos atsakomybes";
+    refs.activityFeed.innerHTML = `
+      <div class="activity-row">
+        <div class="list-meta">
+          <strong>Kliente</strong>
+          <span class="muted">Rezervuoja proceduras ir valdo tik savo vizitus.</span>
+        </div>
+      </div>
+      <div class="activity-row">
+        <div class="list-meta">
+          <strong>Salono vadove</strong>
+          <span class="muted">Mato klientu uzimtus laikus ir darbo kalendoriu be redagavimo.</span>
+        </div>
+      </div>
+      <div class="activity-row">
+        <div class="list-meta">
+          <strong>Adminas</strong>
+          <span class="muted">Stebi platformos statistika ir bendrus rodiklius.</span>
+        </div>
+      </div>
+    `;
+    refs.paymentsCard.innerHTML = `
+      <div class="list-stack">
+        <p>Rezervacijos kuriamos prisijungus arba susikurus kliento paskyra. Partnerio ir admin paskyros skirtos tik perziurai.</p>
+        <button class="primary-button" type="button" data-open-auth data-open-auth-view="register">Kurti arba atidaryti paskyra</button>
+      </div>
+    `;
+    return;
+  }
+
+  if (currentUser.role === "customer") {
+    const bookings = getCustomerBookings(currentUser);
+    const payments = getCustomerPayments(currentUser);
+
+    refs.activityEyebrow.textContent = "Vizitai";
+    refs.activityTitle.textContent = "Tavo rezervaciju naujienos";
+    refs.summaryEyebrow.textContent = "Mokejimai";
+    refs.summaryTitle.textContent = "Tavo atsiskaitymu suvestine";
+    refs.activityFeed.innerHTML = bookings.length
+      ? bookings.slice(0, 5).map(renderCustomerActivityRow).join("")
+      : `<p>Dar neturi savo rezervaciju.</p>`;
+    refs.paymentsCard.innerHTML = `
+      <div class="list-stack">
+        <div class="service-row">
+          <span>
+            <strong>${sumAmounts(payments)} EUR</strong><br />
+            <small class="muted">tik tavo rezervaciju suma</small>
+          </span>
+          <span class="status-chip">${payments.length} mokej.</span>
+        </div>
+        <div class="payments-list">
+          ${payments.length ? payments.slice(0, 3).map(renderPaymentRow).join("") : `<p>Mokejimu dar nera.</p>`}
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (currentUser.role === "salon") {
+    const salonBookings = getSalonBookings(currentUser.salonId);
+    const upcomingSalonBookings = salonBookings.filter(isUpcomingBooking);
+    const pendingSalonBookings = salonBookings.filter((booking) => booking.status === "Laukia patvirtinimo");
+    const depositSalonBookings = salonBookings.filter(
+      (booking) => booking.paymentMethod === "onsite" && !isClosedBooking(booking)
+    );
+    const completedSalonBookings = salonBookings.filter((booking) => booking.status === "Ivykdyta");
+
+    refs.activityEyebrow.textContent = "Kalendorius";
+    refs.activityTitle.textContent = "Klientu rezervuoti laikai";
+    refs.summaryEyebrow.textContent = "Suvestine";
+    refs.summaryTitle.textContent = "Salono rezervaciju busena";
+    refs.activityFeed.innerHTML = salonBookings.length
+      ? salonBookings.slice(0, 5).map(renderSalonActivityRow).join("")
+      : `<p>Klientu rezervaciju kol kas nera.</p>`;
+    refs.paymentsCard.innerHTML = `
+      <div class="list-stack">
+        <div class="service-row">
+          <span>
+            <strong>${salonBookings.length}</strong><br />
+            <small class="muted">klientu rezervuoti laikai</small>
+          </span>
+          <span class="status-chip">${upcomingSalonBookings.length} aktyv.</span>
+        </div>
+        <div class="list-stack">
+          <div class="list-row"><span>Laukia atvykimo</span><strong>${upcomingSalonBookings.length}</strong></div>
+          <div class="list-row"><span>Laukia patvirtinimo</span><strong>${pendingSalonBookings.length}</strong></div>
+          <div class="list-row"><span>Su uzstatu</span><strong>${depositSalonBookings.length}</strong></div>
+          <div class="list-row"><span>Ivykdyta</span><strong>${completedSalonBookings.length}</strong></div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  refs.activityEyebrow.textContent = "Signalai";
+  refs.activityTitle.textContent = "Naujausi platformos ivykiai";
+  refs.summaryEyebrow.textContent = "Statistika";
+  refs.summaryTitle.textContent = "Platformos suvestine";
   refs.activityFeed.innerHTML = state.activities
     .slice(0, 5)
     .map((activity) => {
@@ -3207,13 +5242,12 @@ function renderSideRail() {
       `;
     })
     .join("");
-
   refs.paymentsCard.innerHTML = `
     <div class="list-stack">
       <div class="service-row">
         <span>
           <strong>${sumAmounts(state.payments)} EUR</strong><br />
-          <small class="muted">bendra mokejimu suma</small>
+          <small class="muted">visa platformos mokejimu suma</small>
         </span>
         <span class="status-chip">${state.payments.length} mokej.</span>
       </div>
@@ -3232,6 +5266,27 @@ function renderSessionLabel() {
   refs.sessionLabel.classList.toggle("session-label-hidden", !currentUser);
 }
 
+function renderWorkspaceHeading() {
+  if (!refs.workspaceEyebrow || !refs.workspaceTitle) {
+    return;
+  }
+
+  if (state.currentUserRole === "salon") {
+    refs.workspaceEyebrow.textContent = "Partnerio zona";
+    refs.workspaceTitle.textContent = "Matyk tik savo salono klientu rezervuotus laikus ir darbo kalendoriu";
+    return;
+  }
+
+  if (state.currentUserRole === "admin") {
+    refs.workspaceEyebrow.textContent = "Platformos apzvalga";
+    refs.workspaceTitle.textContent = "Stebek statistika, srautus ir bendrus sistemos rodiklius";
+    return;
+  }
+
+  refs.workspaceEyebrow.textContent = "Paskyra ir rezervacijos";
+  refs.workspaceTitle.textContent = "Vienoje vietoje matyk savo vizitus, pasiulymus ir rezervaciju istorija";
+}
+
 function renderActiveStates() {
   refs.serviceFilters.forEach((button) => {
     button.classList.toggle("active", button.getAttribute("data-service-filter") === state.filters.category);
@@ -3242,7 +5297,11 @@ function renderActiveStates() {
   });
 
   refs.workspaceTabs.forEach((button) => {
-    button.classList.toggle("active", button.getAttribute("data-switch-workspace") === state.workspace);
+    const workspace = button.getAttribute("data-switch-workspace");
+    const canViewWorkspace = canAccessWorkspace(workspace);
+    button.hidden = !canViewWorkspace;
+    button.disabled = !canViewWorkspace;
+    button.classList.toggle("active", canViewWorkspace && workspace === state.workspace);
   });
 }
 
@@ -3256,12 +5315,19 @@ function renderBookingFlow() {
   const salon = getSalon(state.bookingDraft.salonId);
   const service = getService(salon, state.bookingDraft.serviceId);
   const specialist = getSpecialist(salon, state.bookingDraft.specialistId);
+  const bookingRules = getSalonBookingRules(salon);
+  const availableSlots = getAvailableSlots(salon.id, state.bookingDraft.date, {
+    excludedBookingId: editingBookingId,
+    serviceId: state.bookingDraft.serviceId,
+    specialistId: state.bookingDraft.specialistId,
+  });
+  const bookingModeLabel = salon.instant ? "Momentinis patvirtinimas" : "Salonas patvirtina per 30 min.";
 
   refs.bookingTitle.textContent = bookingContext.mode === "edit" ? `Perplanuok ${salon.name}` : `Rezervuok ${salon.name}`;
   refs.bookingSubtitle.textContent =
     bookingContext.mode === "edit"
       ? `${salon.city} | ${salon.category} | pakeisk data, laika arba mokejima`
-      : `${salon.city} | ${salon.category} | nuo ${salon.priceFrom} EUR`;
+      : `${salon.city} | ${salon.category} | ${bookingModeLabel.toLowerCase()}`;
 
   refs.bookingService.innerHTML = salon.services
     .map((item) => {
@@ -3285,26 +5351,28 @@ function renderBookingFlow() {
     })
     .join("");
 
-  const availableSlots = getAvailableSlots(salon.id, state.bookingDraft.date, editingBookingId);
   if (!availableSlots.includes(state.bookingDraft.time)) {
     state.bookingDraft.time = "";
   }
+  const projectedEndTime = state.bookingDraft.time ? shiftTimeValue(state.bookingDraft.time, service.duration) : "";
 
   refs.bookingSlotGrid.innerHTML = availableSlots.length
     ? availableSlots
         .map((slot) => {
+          const slotEndTime = shiftTimeValue(slot, service.duration);
           return `
             <button
               type="button"
               class="slot-button ${state.bookingDraft.time === slot ? "active" : ""}"
               data-slot-select="${slot}"
             >
-              ${slot}
+              <span>${slot}</span>
+              <small>iki ${slotEndTime}</small>
             </button>
           `;
         })
         .join("")
-    : `<p class="muted">Siai dienai laisvu laiku nebeliko.</p>`;
+    : `<p class="muted">Siai paslaugai ir siam meistrui laisvu laiku nebeliko.</p>`;
 
   refs.bookingName.value = state.bookingDraft.customerName;
   refs.bookingPhone.value = state.bookingDraft.customerPhone;
@@ -3320,7 +5388,7 @@ function renderBookingFlow() {
       <div class="service-row">
         <span>
           <strong>${service.name}</strong><br />
-          <small class="muted">${service.duration} min. | ${specialist.name}</small>
+          <small class="muted">${service.duration} min. | ${specialist.name} | ${bookingModeLabel}</small>
         </span>
         <span class="price-tag">${service.price} EUR</span>
       </div>
@@ -3335,9 +5403,11 @@ function renderBookingFlow() {
       <div class="service-row">
         <span>
           <strong>${salon.name}</strong><br />
-          <small class="muted">${salon.city}, ${salon.neighborhood}</small>
+          <small class="muted">${salon.city}, ${salon.neighborhood} | rezervacija bent ${Math.round(
+            bookingRules.leadTimeMinutes / 60
+          )} val. is anksto</small>
         </span>
-        <span class="status-chip">${salon.instant ? "Momentinis" : "Manual"}</span>
+        <span class="status-chip">${salon.instant ? "Momentinis" : "Perziura"}</span>
       </div>
     </div>
   `;
@@ -3347,14 +5417,23 @@ function renderBookingFlow() {
       <div class="list-row"><span>Paslauga</span><strong>${service.name}</strong></div>
       <div class="list-row"><span>Specialistas</span><strong>${specialist.name}</strong></div>
       <div class="list-row"><span>Data ir laikas</span><strong>${
-        state.bookingDraft.time ? `${formatDateLabel(state.bookingDraft.date)} ${state.bookingDraft.time}` : "Dar nepasirinkta"
+        state.bookingDraft.time
+          ? `${formatDateLabel(state.bookingDraft.date)} ${state.bookingDraft.time} - ${projectedEndTime}`
+          : "Dar nepasirinkta"
       }</strong></div>
+      <div class="list-row"><span>Trukme</span><strong>${service.duration} min.</strong></div>
       <div class="list-row"><span>Klientas</span><strong>${state.bookingDraft.customerName || "-"}</strong></div>
       <div class="list-row"><span>Mokejimas</span><strong>${formatPaymentLabel(state.bookingDraft.paymentMethod)}</strong></div>
+      <div class="list-row"><span>Rezervacijos tipas</span><strong>${bookingModeLabel}</strong></div>
       <div class="list-row"><span>Suma dabar</span><strong>${
         state.bookingDraft.paymentMethod === "onsite" ? Math.round(service.price * 0.2) : service.price
       } EUR</strong></div>
       <div class="list-row"><span>Visa paslaugos kaina</span><strong>${service.price} EUR</strong></div>
+      <div class="booking-policy-note">
+        Keitimus gali atlikti iki ${Math.round(bookingRules.changeNoticeMinutes / 60)} val. pries vizita. Tarp vizitu paliekama ${
+          bookingRules.bufferMinutes
+        } min. paruosimo pertrauka.
+      </div>
     </div>
   `;
 
@@ -3370,9 +5449,13 @@ function renderBookingFlow() {
   refs.bookingBack.style.visibility = state.bookingStep === 1 ? "hidden" : "visible";
   refs.bookingNext.textContent =
     state.bookingStep === 3
-      ? state.bookingDraft.paymentMethod === "onsite"
-        ? "Patvirtinti rezervacija"
-        : "Patvirtinti ir apmoketi"
+      ? salon.instant
+        ? state.bookingDraft.paymentMethod === "onsite"
+          ? "Patvirtinti rezervacija"
+          : "Patvirtinti ir apmoketi"
+        : state.bookingDraft.paymentMethod === "onsite"
+        ? "Siusti uzklausa"
+        : "Siusti uzklausa ir autorizuoti"
       : state.bookingStep === 2
       ? "Toliau i mokejima"
       : "Toliau";
@@ -3384,8 +5467,7 @@ function renderGuard(title, description, buttonLabel) {
       <h3>${title}</h3>
       <p>${description}</p>
       <div class="guard-actions">
-        <button class="primary-button" type="button" data-open-auth>${buttonLabel}</button>
-        <button class="ghost-button" type="button" data-open-booking data-salon-id="luna">Perziureti booking flow</button>
+        <button class="primary-button" type="button" data-open-auth data-open-auth-view="login">${buttonLabel}</button>
       </div>
     </section>
   `;
@@ -3395,6 +5477,9 @@ function renderCustomerBookingCard(booking, options = {}) {
   const salon = getSalon(booking.salonId);
   const payment = getPaymentByBookingId(booking.id);
   const showManagement = !options.history && isUpcomingBooking(booking);
+  const canReschedule = showManagement && canRescheduleBooking(booking);
+  const canCancel = showManagement && canCancelBooking(booking);
+  const changeWindowLabel = getBookingChangeWindowLabel(booking);
 
   return `
     <article class="booking-card">
@@ -3412,11 +5497,15 @@ function renderCustomerBookingCard(booking, options = {}) {
       <div class="booking-detail-grid">
         <div>
           <span>Data</span>
-          <strong>${formatDateLabel(booking.date)} ${booking.time}</strong>
+          <strong>${getBookingDateTimeLabel(booking)}</strong>
         </div>
         <div>
           <span>Vieta</span>
           <strong>${salon.city}, ${salon.neighborhood}</strong>
+        </div>
+        <div>
+          <span>Trukme</span>
+          <strong>${getBookingDurationMinutes(booking)} min.</strong>
         </div>
         <div>
           <span>Mokejimas</span>
@@ -3425,6 +5514,10 @@ function renderCustomerBookingCard(booking, options = {}) {
         <div>
           <span>Suma</span>
           <strong>${booking.totalAmount} EUR</strong>
+        </div>
+        <div>
+          <span>Keitimai</span>
+          <strong>${changeWindowLabel}</strong>
         </div>
       </div>
 
@@ -3443,10 +5536,14 @@ function renderCustomerBookingCard(booking, options = {}) {
         ${
           showManagement
             ? `
-              <button class="ghost-button" type="button" data-booking-action="reschedule" data-booking-id="${booking.id}">
+              <button class="ghost-button" type="button" data-booking-action="reschedule" data-booking-id="${booking.id}" ${
+                canReschedule ? "" : "disabled"
+              }>
                 Perplanuoti
               </button>
-              <button class="ghost-button" type="button" data-booking-action="cancel" data-booking-id="${booking.id}">
+              <button class="ghost-button" type="button" data-booking-action="cancel" data-booking-id="${booking.id}" ${
+                canCancel ? "" : "disabled"
+              }>
                 Atsaukti
               </button>
             `
@@ -3456,15 +5553,17 @@ function renderCustomerBookingCard(booking, options = {}) {
           Kartoti
         </button>
       </div>
+      ${
+        showManagement && (!canReschedule || !canCancel)
+          ? `<div class="booking-inline-meta"><span>Taisykle</span><span>${changeWindowLabel}</span></div>`
+          : ""
+      }
     </article>
   `;
 }
 
 function renderSalonBookingCard(booking, options = {}) {
   const compactClass = options.compact ? " compact" : "";
-  const canConfirm = booking.status === "Uzstatas";
-  const canComplete = !isClosedBooking(booking) && getBookingTimestamp(booking) <= Date.now();
-  const canCancel = canCancelBooking(booking);
 
   return `
     <article class="booking-card${compactClass}">
@@ -3482,11 +5581,15 @@ function renderSalonBookingCard(booking, options = {}) {
       <div class="booking-detail-grid">
         <div>
           <span>Laikas</span>
-          <strong>${formatDateLabel(booking.date)} ${booking.time}</strong>
+          <strong>${getBookingDateTimeLabel(booking)}</strong>
         </div>
         <div>
           <span>Kontaktas</span>
           <strong>${booking.customerPhone}</strong>
+        </div>
+        <div>
+          <span>Trukme</span>
+          <strong>${getBookingDurationMinutes(booking)} min.</strong>
         </div>
         <div>
           <span>Mokejimas</span>
@@ -3496,26 +5599,16 @@ function renderSalonBookingCard(booking, options = {}) {
           <span>Verte</span>
           <strong>${booking.totalAmount} EUR</strong>
         </div>
+        <div>
+          <span>Busena</span>
+          <strong>${getPaymentStatusFromBooking(booking)}</strong>
+        </div>
       </div>
 
       ${booking.notes ? `<div class="booking-inline-meta"><span>Pastaba</span><span>${booking.notes}</span></div>` : ""}
-
-      <div class="booking-card-actions">
-        ${
-          canConfirm
-            ? `<button class="ghost-button" type="button" data-booking-action="confirm" data-booking-id="${booking.id}">Patvirtinti</button>`
-            : ""
-        }
-        ${
-          canComplete
-            ? `<button class="ghost-button" type="button" data-booking-action="complete" data-booking-id="${booking.id}">Uzbaigti</button>`
-            : ""
-        }
-        ${
-          canCancel
-            ? `<button class="ghost-button" type="button" data-booking-action="cancel" data-booking-id="${booking.id}">Atsaukti</button>`
-            : ""
-        }
+      <div class="booking-inline-meta">
+        <span>Prieiga</span>
+        <span>tik perziura, pakeitimus valdo kliente</span>
       </div>
     </article>
   `;
@@ -3527,7 +5620,7 @@ function renderBookingRow(booking) {
       <div class="booking-row-meta">
         <strong>${booking.salonName} <span class="booking-code inline">${booking.code}</span></strong>
         <span class="muted">${booking.serviceName} su ${booking.specialistName}</span>
-        <span class="muted">${formatDateLabel(booking.date)} ${booking.time}</span>
+        <span class="muted">${getBookingDateTimeLabel(booking)}</span>
       </div>
       <span class="status-chip ${getBookingStatusClass(booking.status)}">${booking.status}</span>
     </div>
@@ -3544,6 +5637,96 @@ function renderPaymentRow(payment) {
       <div class="list-meta">
         <strong>${payment.amount} EUR</strong>
         <span class="muted">${payment.status}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderCustomerActivityRow(booking) {
+  return `
+    <div class="activity-row">
+      <div class="list-meta">
+        <strong>${booking.serviceName}</strong>
+        <span class="muted">${getBookingDateTimeLabel(booking)} | ${booking.salonName}</span>
+      </div>
+      <span class="status-chip ${getBookingStatusClass(booking.status)}">${booking.status}</span>
+    </div>
+  `;
+}
+
+function renderSalonActivityRow(booking) {
+  return `
+    <div class="activity-row">
+      <div class="list-meta">
+        <strong>${booking.customerName}</strong>
+        <span class="muted">${getBookingDateTimeLabel(booking)} | ${booking.serviceName}</span>
+      </div>
+      <span class="status-chip ${getBookingStatusClass(booking.status)}">${booking.status}</span>
+    </div>
+  `;
+}
+
+function renderSalonWorkCalendar(salon, bookings) {
+  const slots = [...salon.baseSlots].sort(compareTimeValues);
+
+  return `
+    <div class="work-calendar-shell">
+      <div class="work-calendar-grid work-calendar-grid-head">
+        <div class="work-calendar-timehead">Laikas</div>
+        ${upcomingDates
+          .map((date) => {
+            return `
+              <div class="work-calendar-dayhead">
+                <span>${formatWeekdayLabel(date)}</span>
+                <strong>${formatDateLabel(date)}</strong>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+
+      <div class="work-calendar-body">
+        ${slots
+          .map((slot) => {
+            return `
+              <div class="work-calendar-grid work-calendar-row">
+                <div class="work-calendar-time">${slot}</div>
+                ${upcomingDates
+                  .map((date) => {
+                    const slotBookings = getCalendarSlotBookings(bookings, date, slot);
+                    if (!slotBookings.length) {
+                      return `
+                        <div class="work-calendar-cell empty">
+                          <span>Laisva</span>
+                        </div>
+                      `;
+                    }
+
+                    const cellTone = getCalendarBookingsTone(slotBookings);
+
+                    return `
+                      <div class="work-calendar-cell ${cellTone}">
+                        <strong>${slotBookings.length > 1 ? `${slotBookings.length} rezervacijos` : slotBookings[0].customerName}</strong>
+                        ${slotBookings
+                          .slice(0, 2)
+                          .map(
+                            (booking) => `
+                              <div class="work-calendar-booking">
+                                <span>${getCalendarBookingLabel(booking, slot)}</span>
+                                <small>${booking.specialistName} | ${booking.serviceName}</small>
+                              </div>
+                            `
+                          )
+                          .join("")}
+                        ${slotBookings.length > 2 ? `<small>+${slotBookings.length - 2} dar</small>` : ""}
+                      </div>
+                    `;
+                  })
+                  .join("")}
+              </div>
+            `;
+          })
+          .join("")}
       </div>
     </div>
   `;
@@ -3589,8 +5772,24 @@ function getFilteredSalons() {
 
 function getCustomerBookings(customer) {
   return state.bookings
-    .filter((booking) => booking.customerEmail === customer.email || booking.customerId === customer.id)
+    .filter(
+      (booking) =>
+        booking.customerId === customer.id ||
+        String(booking.customerEmail || "")
+          .trim()
+          .toLowerCase() === customer.email
+    )
     .sort(sortBookings);
+}
+
+function getGuestCustomerIdFromEmail(email) {
+  const slug = String(email || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug ? `guest-${slug}` : makeId("guest");
 }
 
 function getCustomerPayments(customer) {
@@ -3618,29 +5817,73 @@ function getCityBookingCounts() {
   }, {});
 }
 
-function getAvailableSlots(salonId, date, excludedBookingId = "") {
+function getAvailableSlots(salonId, date, optionsOrExcludedBookingId = "") {
   const salon = getSalon(salonId);
-  const reserved = new Set(
-    state.bookings
-      .filter(
-        (booking) =>
-          booking.salonId === salonId &&
-          booking.date === date &&
-          booking.id !== excludedBookingId &&
-          bookingBlocksSlot(booking)
-      )
-      .map((booking) => booking.time)
-  );
+  if (!salon || !date) {
+    return [];
+  }
 
-  return salon.baseSlots.filter((slot) => !reserved.has(slot));
+  const options =
+    typeof optionsOrExcludedBookingId === "string"
+      ? { excludedBookingId: optionsOrExcludedBookingId }
+      : optionsOrExcludedBookingId || {};
+  const service = getService(salon, options.serviceId);
+
+  if (options.specialistId) {
+    return getSpecialistAvailableSlots(salon, date, options.specialistId, service.id, options.excludedBookingId || "");
+  }
+
+  const slotSet = new Set();
+  salon.specialists.forEach((specialist) => {
+    getSpecialistAvailableSlots(salon, date, specialist.id, service.id, options.excludedBookingId || "").forEach((slot) =>
+      slotSet.add(slot)
+    );
+  });
+
+  return [...slotSet].sort(compareTimeValues);
+}
+
+function getSpecialistAvailableSlots(salon, date, specialistId, serviceId, excludedBookingId = "") {
+  const service = getService(salon, serviceId);
+  return [...salon.baseSlots]
+    .sort(compareTimeValues)
+    .filter((slot) => canReserveSlot(salon, date, specialistId, service, slot, excludedBookingId));
+}
+
+function getFirstSpecialistForSlot(salon, date, serviceId, slot, excludedBookingId = "") {
+  return salon.specialists.find((specialist) =>
+    getSpecialistAvailableSlots(salon, date, specialist.id, serviceId, excludedBookingId).includes(slot)
+  );
+}
+
+function canReserveSlot(salon, date, specialistId, service, slot, excludedBookingId = "") {
+  if (!isBookingLeadTimeSatisfied(salon, date, slot)) {
+    return false;
+  }
+
+  const proposedRange = getServiceTimeRange(salon, service, slot);
+  return !state.bookings.some(
+    (booking) =>
+      booking.salonId === salon.id &&
+      booking.date === date &&
+      booking.specialistId === specialistId &&
+      booking.id !== excludedBookingId &&
+      bookingBlocksSlot(booking) &&
+      doTimeRangesOverlap(proposedRange, getBookingTimeRange(booking))
+  );
 }
 
 function createBookingDraft(salonId, serviceId, selectedTime) {
   const salon = getSalon(salonId);
+  const customer = getCurrentUser()?.role === "customer" ? getCurrentUser() : { name: "", phone: "", email: "" };
   const chosenService = getService(salon, serviceId) || salon.services[0];
-  const chosenSpecialist = salon.specialists[0];
   const chosenDate = getActiveResultsDate();
-  const availableSlots = getAvailableSlots(salon.id, chosenDate);
+  const chosenSpecialist =
+    (selectedTime && getFirstSpecialistForSlot(salon, chosenDate, chosenService.id, selectedTime)) || salon.specialists[0];
+  const availableSlots = getAvailableSlots(salon.id, chosenDate, {
+    serviceId: chosenService.id,
+    specialistId: chosenSpecialist.id,
+  });
 
   return {
     salonId: salon.id,
@@ -3649,9 +5892,9 @@ function createBookingDraft(salonId, serviceId, selectedTime) {
     date: chosenDate,
     time: selectedTime && availableSlots.includes(selectedTime) ? selectedTime : "",
     paymentMethod: "card",
-    customerName: profiles.customer.name,
-    customerPhone: profiles.customer.phone,
-    customerEmail: profiles.customer.email,
+    customerName: customer.name,
+    customerPhone: customer.phone,
+    customerEmail: customer.email,
     notes: "",
   };
 }
@@ -3659,8 +5902,13 @@ function createBookingDraft(salonId, serviceId, selectedTime) {
 function createBookingDraftFromBooking(booking, options = {}) {
   const preserveTime = Boolean(options.preserveTime);
   const salon = getSalon(booking.salonId);
+  const customer = getCurrentUser()?.role === "customer" ? getCurrentUser() : getPrimaryCustomerAccount();
   const chosenDate = upcomingDates.includes(booking.date) ? booking.date : getActiveResultsDate();
-  const availableSlots = getAvailableSlots(salon.id, chosenDate, preserveTime ? booking.id : "");
+  const availableSlots = getAvailableSlots(salon.id, chosenDate, {
+    excludedBookingId: preserveTime ? booking.id : "",
+    serviceId: booking.serviceId,
+    specialistId: booking.specialistId,
+  });
 
   return {
     salonId: salon.id,
@@ -3669,9 +5917,9 @@ function createBookingDraftFromBooking(booking, options = {}) {
     date: chosenDate,
     time: preserveTime && availableSlots.includes(booking.time) ? booking.time : "",
     paymentMethod: booking.paymentMethod || "card",
-    customerName: booking.customerName || profiles.customer.name,
-    customerPhone: booking.customerPhone || profiles.customer.phone,
-    customerEmail: booking.customerEmail || profiles.customer.email,
+    customerName: booking.customerName || customer.name,
+    customerPhone: booking.customerPhone || customer.phone,
+    customerEmail: booking.customerEmail || customer.email,
     notes: booking.notes || "",
   };
 }
@@ -3728,6 +5976,138 @@ function closeDialog(dialog) {
   dialog.removeAttribute("open");
 }
 
+function getServerSnapshotPayload() {
+  const bookings = (state.bookings || []).map(normalizeBooking);
+  return {
+    accounts: getCustomerAccounts().map(normalizeCustomerAccount),
+    bookings,
+    payments: normalizePayments(state.payments || [], bookings),
+    activities: Array.isArray(state.activities) ? cloneState(state.activities) : [],
+  };
+}
+
+function getServerSnapshotHash() {
+  return JSON.stringify(getServerSnapshotPayload());
+}
+
+function applyServerSnapshot(snapshot) {
+  if (!snapshot) {
+    return;
+  }
+
+  const normalized = normalizeStateShape({
+    ...cloneState(defaultState),
+    ...cloneState(state),
+    accounts: snapshot.accounts ?? state.accounts,
+    bookings: snapshot.bookings ?? state.bookings,
+    payments: snapshot.payments ?? state.payments,
+    activities: snapshot.activities ?? state.activities,
+  });
+
+  state.accounts = normalized.accounts;
+  state.bookings = normalized.bookings;
+  state.payments = normalized.payments;
+  state.activities = normalized.activities;
+  uiState.lastServerSnapshotHash = getServerSnapshotHash();
+}
+
+async function apiRequest(path, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}${path}`, {
+      method: options.method || "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      body: options.body,
+      signal: controller.signal,
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json") ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const error = new Error(payload?.message || `Backend klaida (${response.status})`);
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+
+    return payload;
+  } catch (error) {
+    if (error.name === "AbortError" || error instanceof TypeError) {
+      error.code = "BACKEND_UNAVAILABLE";
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function initializeBackend() {
+  try {
+    const snapshot = await apiRequest("/bootstrap");
+    uiState.backendAvailable = true;
+    uiState.backendChecked = true;
+    applyServerSnapshot(snapshot.snapshot || snapshot);
+    renderAll();
+  } catch (error) {
+    uiState.backendAvailable = false;
+    uiState.backendChecked = true;
+    console.warn("Backend nepasiekiamas, naudojamas localStorage rezimas.", error);
+  }
+}
+
+function scheduleBackendSync(force = false) {
+  if (!uiState.backendAvailable) {
+    return;
+  }
+
+  const nextHash = getServerSnapshotHash();
+  if (!force && nextHash === uiState.lastServerSnapshotHash) {
+    return;
+  }
+
+  if (uiTimers.backendSync) {
+    window.clearTimeout(uiTimers.backendSync);
+  }
+
+  uiTimers.backendSync = window.setTimeout(() => {
+    void flushBackendSync();
+  }, 260);
+}
+
+async function flushBackendSync() {
+  if (!uiState.backendAvailable) {
+    return;
+  }
+
+  const payload = getServerSnapshotPayload();
+  const snapshotHash = JSON.stringify(payload);
+  if (snapshotHash === uiState.lastServerSnapshotHash) {
+    return;
+  }
+
+  try {
+    const response = await apiRequest("/sync", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    applyServerSnapshot(response.snapshot || response);
+    uiState.backendWarningShown = false;
+  } catch (error) {
+    uiState.backendAvailable = false;
+    if (!uiState.backendWarningShown) {
+      showToast("Backend nepasiekiamas", "Toliau veiks vietinis demo rezimas. Paleisk PowerShell serveri, kad duomenys butu issaugomi faile.", "warning");
+      uiState.backendWarningShown = true;
+    }
+    console.warn("Nepavyko issaugoti duomenu backende.", error);
+  }
+}
+
 function getSalon(salonId) {
   return salons.find((salon) => salon.id === salonId);
 }
@@ -3744,8 +6124,208 @@ function getSelectedSalonSpecialist(salon) {
   return getSpecialist(salon, state.selectedSpecialists[salon.id]);
 }
 
+function normalizeCustomerAccount(account) {
+  const createdAt = account.createdAt || new Date().toISOString();
+  return {
+    id: account.id || makeId("customer"),
+    role: "customer",
+    name: String(account.name || "Nauja kliente").trim(),
+    email: String(account.email || "")
+      .trim()
+      .toLowerCase(),
+    phone: String(account.phone || "").trim(),
+    password: String(account.password || ""),
+    loyaltyCredits: Number(account.loyaltyCredits || 0),
+    favoriteSalons: Array.isArray(account.favoriteSalons) ? account.favoriteSalons.filter((salonId) => getSalon(salonId)) : [],
+    createdAt,
+    lastLoginAt: account.lastLoginAt || createdAt,
+  };
+}
+
+function getCustomerAccounts() {
+  return Array.isArray(state.accounts) ? state.accounts : [];
+}
+
+function getPrimaryCustomerAccount() {
+  return getCustomerAccounts()[0] || normalizeCustomerAccount(seedCustomerAccounts[0]);
+}
+
+function getCustomerAccountById(accountId) {
+  return getCustomerAccounts().find((account) => account.id === accountId) || null;
+}
+
+function getCustomerAccountByEmail(email) {
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+  return getCustomerAccounts().find((account) => account.email === normalizedEmail) || null;
+}
+
+function updateCustomerAccountRecord(accountId, patch) {
+  state.accounts = getCustomerAccounts().map((account) =>
+    account.id === accountId ? normalizeCustomerAccount({ ...account, ...patch }) : account
+  );
+}
+
+function getActiveCustomerProfile() {
+  if (state.currentUserRole !== "customer") {
+    return null;
+  }
+
+  return getCustomerAccountById(state.currentUserId) || getPrimaryCustomerAccount();
+}
+
 function getCurrentUser() {
-  return state.currentUserRole ? profiles[state.currentUserRole] : null;
+  if (state.currentUserRole === "customer") {
+    return getActiveCustomerProfile();
+  }
+
+  return state.currentUserRole ? staffProfiles[state.currentUserRole] : null;
+}
+
+function getDefaultWorkspaceForRole(role = state.currentUserRole) {
+  return role || "customer";
+}
+
+function canAccessWorkspace(workspace) {
+  return workspace === getDefaultWorkspaceForRole();
+}
+
+function canCurrentUserBrowseMarketplace() {
+  return !state.currentUserRole || state.currentUserRole === "customer";
+}
+
+function canCurrentUserStartBooking() {
+  return !state.currentUserRole || state.currentUserRole === "customer";
+}
+
+function canCurrentUserBook() {
+  return state.currentUserRole === "customer";
+}
+
+function canCurrentUserManageBooking(booking) {
+  const customer = getActiveCustomerProfile();
+  return (
+    Boolean(booking) &&
+    Boolean(customer) &&
+    state.currentUserRole === "customer" &&
+    (booking.customerId === customer.id ||
+      String(booking.customerEmail || "")
+        .trim()
+        .toLowerCase() === customer.email)
+  );
+}
+
+function isFavoriteSalon(salonId) {
+  const customer = getActiveCustomerProfile();
+  return Boolean(customer && customer.favoriteSalons.includes(salonId));
+}
+
+function toggleFavoriteSalon(salonId) {
+  if (!canCurrentUserBook()) {
+    openAuthModal(state.currentUserRole ? "login" : "register");
+    return;
+  }
+
+  const customer = getActiveCustomerProfile();
+  if (!customer) {
+    openAuthModal("login");
+    return;
+  }
+
+  const favoriteSalons = customer.favoriteSalons.includes(salonId)
+    ? customer.favoriteSalons.filter((id) => id !== salonId)
+    : [...customer.favoriteSalons, salonId];
+
+  updateCustomerAccountRecord(customer.id, { favoriteSalons });
+  pushActivityEntry(
+    favoriteSalons.includes(salonId) ? "Issaugotas salonas" : "Pasalintas issaugotas salonas",
+    `${getSalon(salonId)?.name || "Salon"} ${favoriteSalons.includes(salonId) ? "pridetas" : "pasalintas"} is tavo megstamu vietu.`,
+    "info"
+  );
+  persistAndRender();
+}
+
+function getRoleCapabilitySummary(role) {
+  if (role === "customer") {
+    return "rezervuoja, saugo salonus ir valdo savo vizitus";
+  }
+
+  if (role === "salon") {
+    return "mato klientu rezervuotus laikus";
+  }
+
+  return "stebi statistika ir platformos rodiklius";
+}
+
+function handleUnauthorizedBookingAttempt() {
+  if (!state.currentUserRole) {
+    openAuthModal("login");
+    return;
+  }
+
+  pushActivityEntry(
+    "Rezervacija neleidziama",
+    `${formatRoleLabel(state.currentUserRole)} paskyra gali tik naudoti savo skirta darbo zona.`,
+    "warning"
+  );
+  persistState();
+  renderAll();
+  openAuthModal("login");
+}
+
+function normalizeRoleBoundaries() {
+  if (!state.currentUserRole) {
+    state.currentUserId = null;
+  }
+
+  if (state.currentUserRole === "customer" && !getCustomerAccountById(state.currentUserId)) {
+    state.currentUserId = getCustomerAccounts()[0]?.id || null;
+  }
+
+  if (state.currentUserRole && state.currentUserRole !== "customer") {
+    state.currentUserId = staffProfiles[state.currentUserRole]?.id || null;
+  }
+
+  const allowedWorkspace = getDefaultWorkspaceForRole();
+
+  if (state.workspace !== allowedWorkspace) {
+    state.workspace = allowedWorkspace;
+  }
+
+  if (!canCurrentUserBrowseMarketplace()) {
+    state.activeSalonId = null;
+  } else if (!state.activeSalonId) {
+    const salonIdFromHash = getSalonIdFromHash();
+    if (salonIdFromHash && getSalon(salonIdFromHash)) {
+      state.activeSalonId = salonIdFromHash;
+      state.showResults = true;
+    }
+  }
+
+  if (!canCurrentUserStartBooking() && state.bookingDraft) {
+    state.bookingDraft = null;
+    state.bookingContext = null;
+    state.bookingStep = 1;
+
+    if (refs.bookingModal?.open) {
+      closeDialog(refs.bookingModal);
+    }
+  }
+}
+
+function applyRoleLayoutState() {
+  const canShowDetail = Boolean(state.activeSalonId && canCurrentUserBrowseMarketplace());
+  document.body.dataset.role = state.currentUserRole || "guest";
+  document.body.dataset.view = canShowDetail ? "salon-detail" : "default";
+
+  if (!canCurrentUserBrowseMarketplace()) {
+    closeMegaMenu();
+    closeSearchSuggestions();
+    closeDatePanel();
+  }
+
+  renderWorkspaceHeading();
 }
 
 function persistAndRender() {
@@ -3758,6 +6338,8 @@ function persistState() {
     filters: state.filters,
     workspace: state.workspace,
     currentUserRole: state.currentUserRole,
+    currentUserId: state.currentUserId,
+    accounts: state.accounts,
     bookings: state.bookings,
     payments: state.payments,
     activities: state.activities,
@@ -3766,6 +6348,7 @@ function persistState() {
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+  scheduleBackendSync();
 }
 
 function scrollToResults() {
@@ -3782,6 +6365,113 @@ function scrollToWorkspace() {
   }
 
   refs.workspaceSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function scrollToSalonDetail() {
+  if (!refs.salonDetailSection) {
+    return;
+  }
+
+  refs.salonDetailSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function scrollToSalonDetailAnchor(anchor) {
+  const element = document.querySelector(`#salon-detail-${anchor}`);
+  if (!element) {
+    return;
+  }
+
+  element.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function initializeSalonRouting() {
+  syncSalonDetailStateWithHash();
+  window.addEventListener("hashchange", handleSalonRouteChange);
+}
+
+function handleSalonRouteChange() {
+  syncSalonDetailStateWithHash();
+  renderAll();
+
+  if (state.activeSalonId) {
+    scrollToSalonDetail();
+    return;
+  }
+
+  if (window.location.hash === "#salons") {
+    scrollToResults();
+  }
+}
+
+function syncSalonDetailStateWithHash() {
+  const salonId = getSalonIdFromHash();
+  if (!salonId || !canCurrentUserBrowseMarketplace()) {
+    state.activeSalonId = null;
+    return;
+  }
+
+  const salon = getSalon(salonId);
+  state.activeSalonId = salon ? salon.id : null;
+  if (state.activeSalonId) {
+    state.showResults = true;
+  }
+}
+
+function getSalonIdFromHash() {
+  const match = window.location.hash.match(/^#salonas\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function getSalonRouteHash(salonId) {
+  return `#salonas/${encodeURIComponent(salonId)}`;
+}
+
+function openSalonDetailPage(salonId) {
+  if (!canCurrentUserBrowseMarketplace()) {
+    return;
+  }
+
+  const salon = getSalon(salonId);
+  if (!salon) {
+    return;
+  }
+
+  state.activeSalonId = salon.id;
+  state.showResults = true;
+  const nextHash = getSalonRouteHash(salon.id);
+  if (window.location.hash !== nextHash) {
+    window.location.hash = nextHash.slice(1);
+    return;
+  }
+
+  renderAll();
+  scrollToSalonDetail();
+}
+
+function closeSalonDetailPage() {
+  state.showResults = true;
+  clearSalonDetailState({ preserveHash: true });
+
+  if (window.location.hash.startsWith("#salonas/")) {
+    window.location.hash = "salons";
+    return;
+  }
+
+  renderAll();
+  scrollToResults();
+}
+
+function clearSalonDetailState(options = {}) {
+  const preserveHash = Boolean(options.preserveHash);
+  state.activeSalonId = null;
+
+  if (!preserveHash && window.location.hash.startsWith("#salonas/") && typeof window.history.replaceState === "function") {
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    } catch (error) {
+      window.location.hash = "";
+    }
+  }
 }
 
 function loadState() {
@@ -3806,14 +6496,29 @@ function loadState() {
 }
 
 function normalizeStateShape(sourceState) {
+  const accountsSource =
+    Array.isArray(sourceState.accounts) && sourceState.accounts.length ? sourceState.accounts : seedCustomerAccounts;
+  const accounts = accountsSource.map(normalizeCustomerAccount);
   const bookings = (sourceState.bookings || []).map(normalizeBooking);
   const payments =
     sourceState.payments && sourceState.payments.length
       ? normalizePayments(sourceState.payments, bookings)
       : bookings.map((booking) => buildPaymentRecordForBooking(booking));
+  const currentUserRole = ["customer", "salon", "admin"].includes(sourceState.currentUserRole)
+    ? sourceState.currentUserRole
+    : null;
+  const currentUserId =
+    currentUserRole === "customer"
+      ? sourceState.currentUserId || accounts[0]?.id || null
+      : currentUserRole
+      ? staffProfiles[currentUserRole]?.id || null
+      : null;
 
   return {
     ...sourceState,
+    currentUserRole,
+    currentUserId,
+    accounts,
     bookings,
     payments,
     activities: Array.isArray(sourceState.activities) ? sourceState.activities : cloneState(defaultState.activities),
@@ -3840,6 +6545,11 @@ function formatDateLabel(dateString) {
   const date = new Date(dateString);
   const monthNames = ["Sau", "Vas", "Kov", "Bal", "Geg", "Bir", "Lie", "Rgp", "Rgs", "Spa", "Lap", "Gru"];
   return `${date.getDate()} ${monthNames[date.getMonth()]}`;
+}
+
+function formatWeekdayLabel(dateString) {
+  const weekdayNames = ["Sek", "Pir", "Ant", "Tre", "Ket", "Pen", "Ses"];
+  return weekdayNames[new Date(dateString).getDay()];
 }
 
 function formatTimeAgo(isoString) {
@@ -3885,6 +6595,50 @@ function sumAmounts(items) {
   return items.reduce((sum, item) => sum + Number(item.amount || item.paymentAmount || 0), 0);
 }
 
+function getSalonBookingRules(salon) {
+  const isLongSessionSalon = salon?.category === "Plaukai" || salon?.category === "Masazai";
+  return {
+    leadTimeMinutes: isLongSessionSalon ? DEFAULT_BOOKING_LEAD_TIME_MINUTES : 90,
+    bufferMinutes: isLongSessionSalon ? DEFAULT_BOOKING_BUFFER_MINUTES : 10,
+    changeNoticeMinutes: salon?.instant ? DEFAULT_BOOKING_CHANGE_NOTICE_MINUTES : 24 * 60,
+  };
+}
+
+function timeValueToMinutes(timeValue = "00:00") {
+  const [hours, minutes] = String(timeValue)
+    .split(":")
+    .map((value) => Number(value || 0));
+  return hours * 60 + minutes;
+}
+
+function getServiceCleanupMinutes(service, salon) {
+  const defaultBuffer = getSalonBookingRules(salon).bufferMinutes;
+  if (!service) {
+    return defaultBuffer;
+  }
+
+  if (service.duration >= 120) {
+    return Math.max(defaultBuffer, 20);
+  }
+
+  if (service.duration >= 75) {
+    return Math.max(defaultBuffer, 15);
+  }
+
+  return defaultBuffer;
+}
+
+function getServiceTimeRange(salon, service, time) {
+  const duration = Number(service?.duration || 60);
+  const cleanupMinutes = getServiceCleanupMinutes(service, salon);
+  const startMinutes = timeValueToMinutes(time);
+  return {
+    startMinutes,
+    endMinutes: startMinutes + duration,
+    blockedEndMinutes: startMinutes + duration + cleanupMinutes,
+  };
+}
+
 function getBookingTimestamp(booking) {
   return new Date(`${booking.date}T${booking.time || "00:00"}:00`).getTime();
 }
@@ -3898,19 +6652,163 @@ function isUpcomingBooking(booking) {
 }
 
 function canRescheduleBooking(booking) {
-  return !isClosedBooking(booking) && getBookingTimestamp(booking) >= Date.now();
+  const salon = getSalon(booking?.salonId);
+  const changeNoticeMinutes = getSalonBookingRules(salon).changeNoticeMinutes;
+  return !isClosedBooking(booking) && getBookingTimestamp(booking) - Date.now() >= changeNoticeMinutes * 60000;
 }
 
 function canCancelBooking(booking) {
-  return !isClosedBooking(booking) && getBookingTimestamp(booking) >= Date.now();
+  const salon = getSalon(booking?.salonId);
+  const changeNoticeMinutes = getSalonBookingRules(salon).changeNoticeMinutes;
+  return !isClosedBooking(booking) && getBookingTimestamp(booking) - Date.now() >= changeNoticeMinutes * 60000;
 }
 
 function bookingBlocksSlot(booking) {
   return !isClosedBooking(booking);
 }
 
+function getBookingDurationMinutes(booking) {
+  if (!booking) {
+    return 0;
+  }
+
+  if (Number.isFinite(Number(booking.duration))) {
+    return Number(booking.duration);
+  }
+
+  const salon = getSalon(booking.salonId);
+  const service = salon ? getService(salon, booking.serviceId) : null;
+  return Number(service?.duration || 60);
+}
+
+function getBookingCleanupMinutes(booking) {
+  if (!booking) {
+    return 0;
+  }
+
+  if (Number.isFinite(Number(booking.cleanupMinutes))) {
+    return Number(booking.cleanupMinutes);
+  }
+
+  const salon = getSalon(booking.salonId);
+  const service = salon ? getService(salon, booking.serviceId) : null;
+  return getServiceCleanupMinutes(service, salon);
+}
+
+function getBookingEndTime(booking) {
+  if (!booking?.time) {
+    return "";
+  }
+
+  return booking.endTime || shiftTimeValue(booking.time, getBookingDurationMinutes(booking));
+}
+
+function getBookingTimeRange(booking) {
+  const startMinutes = timeValueToMinutes(booking.time);
+  const duration = getBookingDurationMinutes(booking);
+  const cleanupMinutes = getBookingCleanupMinutes(booking);
+  return {
+    startMinutes,
+    endMinutes: startMinutes + duration,
+    blockedEndMinutes: startMinutes + duration + cleanupMinutes,
+  };
+}
+
+function doTimeRangesOverlap(leftRange, rightRange) {
+  return leftRange.startMinutes < rightRange.blockedEndMinutes && rightRange.startMinutes < leftRange.blockedEndMinutes;
+}
+
+function isBookingLeadTimeSatisfied(salon, date, time) {
+  const leadTimeMinutes = getSalonBookingRules(salon).leadTimeMinutes;
+  return new Date(`${date}T${time}:00`).getTime() - Date.now() >= leadTimeMinutes * 60000;
+}
+
+function getDraftBookingStatus(salon, paymentMethod) {
+  if (!salon.instant) {
+    return "Laukia patvirtinimo";
+  }
+
+  return paymentMethod === "onsite" ? "Uzstatas" : "Patvirtinta";
+}
+
+function hasCustomerBookingConflict(draft, excludedBookingId = "") {
+  const salon = getSalon(draft.salonId);
+  const service = getService(salon, draft.serviceId);
+  const proposedRange = getServiceTimeRange(salon, service, draft.time);
+
+  return state.bookings.some(
+    (booking) =>
+      booking.id !== excludedBookingId &&
+      booking.date === draft.date &&
+      bookingBlocksSlot(booking) &&
+      (booking.customerId === draft.customerId || booking.customerEmail === draft.customerEmail) &&
+      doTimeRangesOverlap(proposedRange, getBookingTimeRange(booking))
+  );
+}
+
+function isValidCustomerEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function isValidCustomerPhone(phone) {
+  return String(phone || "").replace(/[^\d+]/g, "").length >= 8;
+}
+
+function getBookingDateTimeLabel(booking) {
+  return `${formatDateLabel(booking.date)} ${booking.time}${getBookingEndTime(booking) ? ` - ${getBookingEndTime(booking)}` : ""}`;
+}
+
+function getBookingChangeWindowLabel(booking) {
+  const changeNoticeHours = Math.round(getSalonBookingRules(getSalon(booking?.salonId)).changeNoticeMinutes / 60);
+  return canCancelBooking(booking) ? `iki ${changeNoticeHours} val. pries vizita` : "langas uzsidare";
+}
+
+function getCalendarSlotBookings(bookings, date, slot) {
+  return bookings
+    .filter((booking) => booking.date === date && bookingBlocksSlot(booking) && doesBookingOccupySlot(booking, slot))
+    .sort((left, right) => {
+      const leftStart = timeValueToMinutes(left.time);
+      const rightStart = timeValueToMinutes(right.time);
+      if (leftStart !== rightStart) {
+        return leftStart - rightStart;
+      }
+
+      return left.customerName.localeCompare(right.customerName);
+    });
+}
+
+function doesBookingOccupySlot(booking, slot) {
+  const bookingRange = getBookingTimeRange(booking);
+  const slotMinutes = timeValueToMinutes(slot);
+  return slotMinutes >= bookingRange.startMinutes && slotMinutes < bookingRange.blockedEndMinutes;
+}
+
+function getCalendarBookingsTone(bookings) {
+  if (bookings.some((booking) => booking.status === "Atsaukta")) {
+    return "danger";
+  }
+
+  if (bookings.some((booking) => booking.status === "Laukia patvirtinimo" || booking.status === "Uzstatas")) {
+    return "warning";
+  }
+
+  if (bookings.some((booking) => booking.status === "Ivykdyta" || booking.status === "Neatvyko")) {
+    return "info";
+  }
+
+  return "confirmed";
+}
+
+function getCalendarBookingLabel(booking, slot) {
+  if (booking.time === slot) {
+    return `${booking.customerName} | ${booking.time}-${getBookingEndTime(booking)}`;
+  }
+
+  return `${booking.customerName} | tesiama iki ${getBookingEndTime(booking)}`;
+}
+
 function getBookingStatusClass(status) {
-  if (status === "Uzstatas") {
+  if (status === "Uzstatas" || status === "Laukia patvirtinimo") {
     return "warning";
   }
 
@@ -3925,7 +6823,27 @@ function getBookingStatusClass(status) {
   return "";
 }
 
+function getBookingCalendarClass(status) {
+  if (status === "Uzstatas" || status === "Laukia patvirtinimo") {
+    return "warning";
+  }
+
+  if (status === "Atsaukta") {
+    return "danger";
+  }
+
+  if (status === "Ivykdyta" || status === "Neatvyko") {
+    return "info";
+  }
+
+  return "confirmed";
+}
+
 function getPaymentStatusFromBooking(booking) {
+  if (booking.status === "Laukia patvirtinimo") {
+    return booking.paymentMethod === "onsite" ? "Laukia uzstato" : "Autorizuota";
+  }
+
   if (booking.status === "Atsaukta") {
     return booking.paymentMethod === "onsite" ? "Uzstatas grazintas" : "Grazinta";
   }
@@ -3939,12 +6857,20 @@ function getPaymentStatusFromBooking(booking) {
 
 function normalizeBooking(booking) {
   const createdAt = booking.createdAt || new Date().toISOString();
+  const salon = getSalon(booking.salonId);
+  const service = salon ? getService(salon, booking.serviceId) : null;
+  const duration = Number(booking.duration ?? service?.duration ?? 60);
+  const cleanupMinutes = Number(booking.cleanupMinutes ?? getServiceCleanupMinutes(service, salon));
+  const endTime = booking.time ? booking.endTime || shiftTimeValue(booking.time, duration) : booking.endTime || "";
 
   return {
     ...booking,
     code: booking.code || makeBookingCode(booking.id),
     notes: booking.notes || "",
     status: booking.status || "Patvirtinta",
+    duration,
+    cleanupMinutes,
+    endTime,
     createdAt,
     updatedAt: booking.updatedAt || createdAt,
   };
@@ -3982,6 +6908,10 @@ function sortBookingsDescending(left, right) {
 
 function sortPaymentsDescending(left, right) {
   return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
+}
+
+function compareTimeValues(left, right) {
+  return left.localeCompare(right, undefined, { numeric: true });
 }
 
 function toIsoDate(date) {

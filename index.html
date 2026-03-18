@@ -642,30 +642,42 @@
         <section class="trend-section reveal">
           <div class="section-heading compact-heading">
             <p class="eyebrow">Populiaru dabar</p>
-            <h2>Proceduros, kurias klientes rezervuoja dazniausiai</h2>
+            <h2>Proceduros, kurios siuo metu rezervuojamos dazniausiai</h2>
           </div>
           <div class="trend-links">
-            <a href="#salons">Veido sveitimas su vitaminu C</a>
-            <a href="#salons">RF proceduros</a>
-            <a href="#salons">Klasikine veido procedura</a>
-            <a href="#salons">Mikroadatine terapija</a>
-            <a href="#salons">Limfodrenazas</a>
-            <a href="#salons">Drekinamasis ritualas</a>
+            <button type="button" data-menu-category="Nagai" data-menu-query="Gelinis lakavimas">
+              Gelinis lakavimas su nuemimu
+            </button>
+            <button type="button" data-menu-category="Plaukai" data-menu-query="Balayage">
+              Balayage su tonavimu
+            </button>
+            <button type="button" data-menu-category="Veidas" data-menu-query="Antakiu laminavimas">
+              Antakiu laminavimas ir dazymas
+            </button>
+            <button type="button" data-menu-category="Masazai" data-menu-query="Atpalaiduojantis masazas">
+              Atpalaiduojantis nugaros masazas
+            </button>
+            <button type="button" data-menu-category="Veidas" data-menu-query="Veido valymas">
+              Veido valymas jautriai odai
+            </button>
+            <button type="button" data-menu-category="Nagai" data-menu-query="Pedikiuras">
+              Pedikiuras su ilgalaikiu lakavimu
+            </button>
           </div>
         </section>
 
         <section class="featured-strip reveal">
           <article>
-            <span>Patrauklios kainos</span>
-            <p>Rask paskutines minutes laikus arba tylesnes valandas su geresniu pasiulymu.</p>
+            <span>Patikrinti atsiliepimai</span>
+            <p>Prie kiekvieno salono matai ne tik reitinga, bet ir tai, ka klientes po vizito mini dazniausiai.</p>
           </article>
           <article>
-            <span>Rezervuok visa para</span>
-            <p>Namuose, transporte ar per pietu pertrauka - sistema veikia tada, kai reikia tau.</p>
+            <span>Aiskus kainynas</span>
+            <p>Kainos, trukmes, uzstatai ir rezervacijos taisykles rodomos dar pries pasirenkant laika.</p>
           </article>
           <article>
-            <span>Rinkis is geriausiu</span>
-            <p>Vienoje vietoje matai simtus salonu, realius ivertinimus ir laisvus laikus.</p>
+            <span>Laisvi laikai realiu ritmu</span>
+            <p>Greitai pamatai, kur verta rezervuoti is anksto, o kur dar imanoma rasti slota per 24 valandas.</p>
           </article>
         </section>
 
@@ -738,13 +750,21 @@
             </div>
           </div>
 
+          <div class="active-filter-bar" id="active-filter-bar" hidden>
+            <div class="active-filter-list" id="active-filter-list"></div>
+          </div>
+
           <div class="salon-list" id="salon-list" aria-live="polite"></div>
+        </section>
+
+        <section class="salon-detail-section" id="salon-detail" hidden aria-hidden="true">
+          <div id="salon-detail-shell"></div>
         </section>
 
         <section class="workspace-section" id="workspace">
           <div class="section-heading reveal">
-            <p class="eyebrow">Paskyra ir rezervacijos</p>
-            <h2>Vienoje vietoje matyk savo vizitus, pasiulymus ir rezervaciju istorija</h2>
+            <p class="eyebrow" id="workspace-eyebrow">Paskyra ir rezervacijos</p>
+            <h2 id="workspace-title">Vienoje vietoje matyk savo vizitus, pasiulymus ir rezervaciju istorija</h2>
           </div>
 
           <div class="workspace-switcher">
@@ -776,8 +796,8 @@
               <article class="side-card">
                 <div class="card-header">
                   <div>
-                    <p class="eyebrow">Naujienos</p>
-                    <h3>Naujausi platformos signalai</h3>
+                    <p class="eyebrow" id="activity-eyebrow">Naujienos</p>
+                    <h3 id="activity-title">Naujausi platformos signalai</h3>
                   </div>
                 </div>
                 <div id="activity-feed" class="activity-feed"></div>
@@ -786,8 +806,8 @@
               <article class="side-card">
                 <div class="card-header">
                   <div>
-                    <p class="eyebrow">Apmokejimai</p>
-                    <h3>Trumpa suvestine</h3>
+                    <p class="eyebrow" id="summary-eyebrow">Apmokejimai</p>
+                    <h3 id="summary-title">Trumpa suvestine</h3>
                   </div>
                 </div>
                 <div id="payments-card"></div>
@@ -799,60 +819,60 @@
         <section class="journey-section" id="journey">
           <div class="section-heading reveal">
             <p class="eyebrow">Atrask daugiau</p>
-            <h2>Pasiulymai ir turinys, kurie padeda apsispresti greiciau</h2>
+            <h2>Turinys, kuris padeda greiciau issirinkti tinkama salona</h2>
           </div>
 
           <div class="journey-grid">
             <article class="journey-card reveal">
-              <span>Dovanu kuponas</span>
-              <h3>Padovanok grozio paslauga vienu pirkimu</h3>
-              <p>Vienas kuponas gali tapti manikiuru, masazu, kirpimu ar kitu maloniu ritualu.</p>
+              <span>Pirmam vizitui</span>
+              <h3>Greitai suprask, ar salonas tau tiks ir po proceduros</h3>
+              <p>Aprasymai, taisykles ir atsiliepimu tonas padeda nuspresti ne tik pagal nuotrauka ar akcija.</p>
             </article>
             <article class="journey-card reveal delay-1">
-              <span>Top vietos</span>
-              <h3>Perziurek geriausiai ivertintus salonus</h3>
-              <p>Top vietu sarasai leidzia greitai atsirinkti patikimiausius variantus mieste.</p>
+              <span>Miesto ritmas</span>
+              <h3>Palygink rajonus, kainas ir rezervaciju tempus</h3>
+              <p>Vienur lengviau rasti po darbo laika, kitur verta rezervuoti keliomis dienomis anksciau.</p>
             </article>
             <article class="journey-card reveal delay-2">
-              <span>Programeles jausmas</span>
-              <h3>Naudok rezervacijas taip pat lengvai ir telefone</h3>
-              <p>Visa patirtis sukurta taip, kad greitai veiktu tiek desktop, tiek mobile lange.</p>
+              <span>Patikima rezervacija</span>
+              <h3>Matyk, kur reikalingas uzstatas, o kur patvirtinimas iskart</h3>
+              <p>Skirtingi salonai dirba skirtingu tempu, todel svarbiausios rezervacijos salygos parodytos iskart.</p>
             </article>
           </div>
         </section>
 
         <section class="review-section" id="reviews">
           <div class="section-heading reveal">
-            <p class="eyebrow">Narsyk pagal procedura</p>
-            <h2>Nori pamatyti daugiau? Pradek nuo to, ko tau reikia siandien</h2>
+            <p class="eyebrow">Narsyk pagal poreiki</p>
+            <h2>Pradek nuo proceduros, miesto arba to, ko nori is pirmo vizito</h2>
           </div>
 
           <div class="review-grid">
             <article class="review-card reveal">
-              <p>Kirpyklos</p>
-              <strong>Plaukams ir sukuosenoms</strong>
+              <p>Plaukai</p>
+              <strong>Kirpimai, dazymai ir plauko prieziura</strong>
               <div class="link-stack">
-                <a href="#salons">Kirpyklos Vilniuje</a>
-                <a href="#salons">Kirpyklos Kaune</a>
-                <a href="#salons">Kirpyklos Klaipedoje</a>
+                <a href="#salons">Balayage Vilniuje</a>
+                <a href="#salons">Kirpimas Kaune</a>
+                <a href="#salons">Tonavimas Klaipedoje</a>
               </div>
             </article>
             <article class="review-card reveal delay-1">
-              <p>Vyrams</p>
-              <strong>Barzdai, plaukams ir grooming</strong>
+              <p>Veidas ir nagai</p>
+              <strong>Greitam rezultatui pries rengini arba kasdienai</strong>
               <div class="link-stack">
-                <a href="#salons">Vyru kirpyklos Vilniuje</a>
-                <a href="#salons">Vyru kirpyklos Kaune</a>
-                <a href="#salons">Vyru kirpyklos Klaipedoje</a>
+                <a href="#salons">Hydra glow Vilniuje</a>
+                <a href="#salons">Gelinis lakavimas Kaune</a>
+                <a href="#salons">Antakiu laminavimas Klaipedoje</a>
               </div>
             </article>
             <article class="review-card reveal delay-2">
-              <p>Masazai ir nagai</p>
-              <strong>Atsipalaidavimui ir kasdieniam groziui</strong>
+              <p>Poilsiui</p>
+              <strong>Masazai ir ritualai, kai svarbiausia atsijungti</strong>
               <div class="link-stack">
-                <a href="#salons">Masazai Vilniuje</a>
-                <a href="#salons">Manikiuras Kaune</a>
-                <a href="#salons">Pedikiuras Klaipedoje</a>
+                <a href="#salons">Nugaros masazas Vilniuje</a>
+                <a href="#salons">Poru ritualas Kaune</a>
+                <a href="#salons">Atpalaiduojantis masazas Klaipedoje</a>
               </div>
             </article>
           </div>
@@ -879,51 +899,139 @@
       </footer>
     </div>
 
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
     <dialog class="auth-modal" id="auth-modal">
-      <form class="modal-shell auth-shell" method="dialog">
-        <button class="modal-close" type="submit" aria-label="Uzdaryti">x</button>
+      <div class="modal-shell auth-shell">
+        <button class="modal-close" type="button" data-close-auth aria-label="Uzdaryti">x</button>
         <div class="modal-copy">
-          <p class="eyebrow">Prisijungimas</p>
-          <h2>Pasirink profili ir atidaryk tau aktualia Lai&#382;yklel&#279; puse</h2>
+          <p class="eyebrow">Paskyra</p>
+          <h2>Prisijunk, susikurk paskyra arba atkurk prieiga</h2>
           <p>
-            Prisijungimas cia demonstracinis, bet sesija ir pasirinktas profilis
-            lieka issaugoti narsykleje.
+            Kliento srautas veikia kaip realesne demo versija: registracija, prisijungimas,
+            sesija ir rezervaciju istorija issaugomi narsykleje.
           </p>
         </div>
 
-        <div class="auth-grid">
-          <article class="auth-card">
-            <p class="eyebrow">Kliente</p>
-            <h3>Monika Petrauske</h3>
-            <p>Matys artimiausius vizitus, lojaluma, mokejimus ir rezervaciju istorija.</p>
-            <button class="primary-button block" type="button" data-login-role="customer">
-              Prisijungti kaip kliente
-            </button>
-          </article>
+        <div class="auth-layout">
+          <section class="auth-main">
+            <div class="auth-tabs" id="auth-tabs">
+              <button class="auth-tab active" type="button" data-auth-view-target="login">Prisijungti</button>
+              <button class="auth-tab" type="button" data-auth-view-target="register">Registruotis</button>
+              <button class="auth-tab" type="button" data-auth-view-target="reset">Atkurti</button>
+            </div>
 
-          <article class="auth-card">
-            <p class="eyebrow">Salonas</p>
-            <h3>Simona Vaitkute</h3>
-            <p>Valdys Luna Beauty House uzimtuma, pajamu suvestine ir dienos tvarkarasti.</p>
-            <button class="primary-button block" type="button" data-login-role="salon">
-              Prisijungti kaip salono vadove
-            </button>
-          </article>
+            <p class="auth-message" id="auth-message" aria-live="polite"></p>
 
-          <article class="auth-card">
-            <p class="eyebrow">Admin</p>
-            <h3>Platformos valdymas</h3>
-            <p>Matys miesto performance, aktyvuma ir bendra rezervaciju srauta.</p>
-            <button class="primary-button block" type="button" data-login-role="admin">
-              Prisijungti kaip admin
+            <section class="auth-view" data-auth-view="login">
+              <div class="auth-form-grid">
+                <label class="field full">
+                  <span>El. pastas</span>
+                  <input id="auth-login-email" type="email" placeholder="vardas@email.lt" />
+                </label>
+                <label class="field full">
+                  <span>Slaptazodis</span>
+                  <input id="auth-login-password" type="password" placeholder="Ivesk slaptazodi" />
+                </label>
+              </div>
+
+              <div class="auth-inline-actions">
+                <button class="primary-button" type="button" id="auth-login-submit">Prisijungti</button>
+                <button class="ghost-button" type="button" data-auth-view-target="reset">Pamirso slaptazodi?</button>
+              </div>
+            </section>
+
+            <section class="auth-view is-hidden" data-auth-view="register">
+              <div class="auth-form-grid">
+                <label class="field">
+                  <span>Vardas ir pavarde</span>
+                  <input id="auth-register-name" type="text" placeholder="Pvz. Monika Petrauske" />
+                </label>
+                <label class="field">
+                  <span>Telefonas</span>
+                  <input id="auth-register-phone" type="tel" placeholder="+370..." />
+                </label>
+                <label class="field full">
+                  <span>El. pastas</span>
+                  <input id="auth-register-email" type="email" placeholder="vardas@email.lt" />
+                </label>
+                <label class="field">
+                  <span>Slaptazodis</span>
+                  <input id="auth-register-password" type="password" placeholder="Bent 8 simboliai" />
+                </label>
+                <label class="field">
+                  <span>Pakartok slaptazodi</span>
+                  <input id="auth-register-password-repeat" type="password" placeholder="Pakartok slaptazodi" />
+                </label>
+              </div>
+
+              <div class="auth-inline-actions">
+                <button class="primary-button" type="button" id="auth-register-submit">Sukurti paskyra</button>
+                <button class="ghost-button" type="button" data-auth-view-target="login">Jau turiu paskyra</button>
+              </div>
+            </section>
+
+            <section class="auth-view is-hidden" data-auth-view="reset">
+              <div class="auth-form-grid">
+                <label class="field full">
+                  <span>Paskyros el. pastas</span>
+                  <input id="auth-reset-email" type="email" placeholder="vardas@email.lt" />
+                </label>
+                <label class="field">
+                  <span>Naujas slaptazodis</span>
+                  <input id="auth-reset-password" type="password" placeholder="Naujas slaptazodis" />
+                </label>
+                <label class="field">
+                  <span>Pakartok nauja slaptazodi</span>
+                  <input id="auth-reset-password-repeat" type="password" placeholder="Pakartok nauja slaptazodi" />
+                </label>
+              </div>
+
+              <div class="auth-inline-actions">
+                <button class="primary-button" type="button" id="auth-reset-submit">Atnaujinti slaptazodi</button>
+                <button class="ghost-button" type="button" data-auth-view-target="login">Grizti i login</button>
+              </div>
+            </section>
+          </section>
+
+          <aside class="auth-side">
+            <article class="auth-card">
+              <p class="eyebrow">Demo kliente</p>
+              <h3>Monika Petrauske</h3>
+              <p>Patikrink tikra kliento srauta su jau turima rezervaciju istorija ir megstamais salonais.</p>
+              <div class="auth-credentials">
+                <strong>monika@groziolaikas.demo</strong>
+                <span>Monika123!</span>
+              </div>
+              <button class="primary-button block" type="button" data-login-role="customer" data-login-account="customer-monika">
+                Testi kaip Monika
+              </button>
+            </article>
+
+            <article class="auth-card">
+              <p class="eyebrow">Partnerio demo</p>
+              <h3>Simona Vaitkute</h3>
+              <p>Atidaro tik salono perziuros zona su klientu rezervuotais laikais ir kalendoriumi.</p>
+              <button class="ghost-button block" type="button" data-login-role="salon">
+                Prisijungti kaip salono vadove
+              </button>
+            </article>
+
+            <article class="auth-card">
+              <p class="eyebrow">Admin demo</p>
+              <h3>Platformos valdymas</h3>
+              <p>Mato statistika, srautus ir bendra platformos apzvalga, bet negali rezervuoti vizitu.</p>
+              <button class="ghost-button block" type="button" data-login-role="admin">
+                Prisijungti kaip admin
+              </button>
+            </article>
+
+            <button class="ghost-button wide-button" type="button" data-logout>
+              Atsijungti
             </button>
-          </article>
+          </aside>
         </div>
-
-        <button class="ghost-button wide-button" type="button" id="logout-button">
-          Atsijungti
-        </button>
-      </form>
+      </div>
     </dialog>
 
     <dialog class="booking-modal" id="booking-modal">

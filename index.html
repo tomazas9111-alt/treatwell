@@ -3,150 +3,603 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GrozioLaikas | Grozio salonu rezervacijos platforma</title>
+    <title>Lai&#382;yklel&#279; | Grozio rezervacijos internetu</title>
     <meta
       name="description"
-      content="Interaktyvus Treatwell stiliaus grozio salonu rezervaciju demonstracinis puslapis."
+      content="Treatwell tipo ikveptas grozio rezervaciju puslapis su Lai&#382;yklel&#279; brandu ir originaliu kodu."
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div class="promo-bar">
+      <div class="promo-inner">
+        <span>Lai&#382;yklel&#279; klubas</span>
+        <p>Rezervuok internetu, kaupk taskus ir atrakink pasilepinimo nuolaidas.</p>
+        <a href="#workspace">Suziureti paskyra</a>
+      </div>
+    </div>
+
     <div class="page-shell">
       <header class="site-header">
-        <a class="brand" href="#top" aria-label="GrozioLaikas pradinis puslapis">
-          <span class="brand-mark">GL</span>
-          <span class="brand-text">GrozioLaikas</span>
+        <a class="brand" href="#discover" aria-label="Lai&#382;yklel&#279; pradinis puslapis">
+          <span class="brand-copy">
+            <strong class="brand-text">Lai&#382;yklel&#279;</strong>
+          </span>
         </a>
 
-        <nav class="top-nav" aria-label="Pagrindine navigacija">
-          <a href="#services">Paslaugos</a>
-          <a href="#salons">Salonai</a>
-          <a href="#how-it-works">Kaip veikia</a>
-          <a href="#reviews">Atsiliepimai</a>
+        <nav class="top-nav top-nav-utility" aria-label="Paskyra">
+          <a href="#workspace">Tavo verslui</a>
+          <a href="#workspace" data-open-auth>Prisijungti</a>
         </nav>
 
-        <div class="header-actions">
-          <button class="ghost-button" type="button">Salonams</button>
-          <button class="primary-button" type="button" data-open-booking>
-            Rezervuoti
-          </button>
-        </div>
+        <p class="session-label session-label-hidden" id="session-label">Neprisijungta</p>
       </header>
 
-      <main id="top">
-        <section class="hero">
+      <section class="mega-menu-shell" id="mega-menu">
+        <nav class="mega-menu-bar" aria-label="Paslaugu kategorijos">
+          <button
+            class="mega-trigger active"
+            id="mega-trigger-plaukai"
+            type="button"
+            data-mega-target="plaukai"
+            aria-controls="mega-panel-plaukai"
+            aria-selected="true"
+          >
+            Plaukai
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-nagai"
+            type="button"
+            data-mega-target="nagai"
+            aria-controls="mega-panel-nagai"
+            aria-selected="false"
+          >
+            Nagai
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-depiliacija"
+            type="button"
+            data-mega-target="depiliacija"
+            aria-controls="mega-panel-depiliacija"
+            aria-selected="false"
+          >
+            Depiliacija
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-masazas"
+            type="button"
+            data-mega-target="masazas"
+            aria-controls="mega-panel-masazas"
+            aria-selected="false"
+          >
+            Masazas
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-veidas"
+            type="button"
+            data-mega-target="veidas"
+            aria-controls="mega-panel-veidas"
+            aria-selected="false"
+          >
+            Veidas
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-kunas"
+            type="button"
+            data-mega-target="kunas"
+            aria-controls="mega-panel-kunas"
+            aria-selected="false"
+          >
+            Kunas
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-vyrams"
+            type="button"
+            data-mega-target="vyrams"
+            aria-controls="mega-panel-vyrams"
+            aria-selected="false"
+          >
+            Vyrams
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-nauji-salonai"
+            type="button"
+            data-mega-target="nauji-salonai"
+            aria-controls="mega-panel-nauji-salonai"
+            aria-selected="false"
+          >
+            Nauji salonai
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-dovanu-kuponai"
+            type="button"
+            data-mega-target="dovanu-kuponai"
+            aria-controls="mega-panel-dovanu-kuponai"
+            aria-selected="false"
+          >
+            Dovanu kuponai
+          </button>
+          <button
+            class="mega-trigger"
+            id="mega-trigger-grozio-gidas"
+            type="button"
+            data-mega-target="grozio-gidas"
+            aria-controls="mega-panel-grozio-gidas"
+            aria-selected="false"
+          >
+            Grozio gidas
+          </button>
+        </nav>
+
+        <div class="mega-menu-panels">
+          <section
+            class="mega-panel active"
+            id="mega-panel-plaukai"
+            data-mega-panel="plaukai"
+            role="tabpanel"
+          >
+            <div class="mega-links">
+              <a href="#salons" data-menu-category="Plaukai" data-menu-query="kirpimas">Kirpimas moterims</a>
+              <a href="#salons" data-menu-category="Plaukai" data-menu-query="kirpimas">Vyriskas kirpimas</a>
+              <a href="#salons" data-menu-category="Plaukai" data-menu-query="balayage">Plauku ar sruogeliu dazymas moterims</a>
+              <a href="#salons" data-menu-category="Plaukai" data-menu-query="blizgesio">Dziovinimas ir susukavimas</a>
+              <a href="#salons" data-menu-category="Plaukai" data-menu-query="balayage">Balayage ir Ombre dazymas</a>
+              <a href="#salons" data-menu-category="Plaukai" data-menu-query="">Vaiku kirpimas</a>
+              <a class="mega-link-strong" href="#salons" data-menu-category="Plaukai" data-menu-query="">Visos plauku prieziuros paslaugos</a>
+            </div>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="luna" data-service-id="balayage">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #cbdcc7 0%, #edd4b0 48%, #f8f2e7 100%);"></div>
+              <div class="mega-promo-copy">Nespeji? Atrask salona akimirksniu</div>
+            </button>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="atelier27" data-service-id="gloss">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #5c3d36 0%, #8f654d 42%, #d9c2aa 100%);"></div>
+              <div class="mega-promo-copy">Zenk i ryskesni stiliu</div>
+            </button>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-nagai"
+            data-mega-panel="nagai"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#salons" data-menu-category="Nagai" data-menu-query="gelinis">Ilgalaikis gelinis manikiuras</a>
+              <a href="#salons" data-menu-category="Nagai" data-menu-query="pedikiuras">Ilgalaikis gelinis pedikiuras</a>
+              <a href="#salons" data-menu-category="Nagai" data-menu-query="gelinis">Manikiuras</a>
+              <a href="#salons" data-menu-category="Nagai" data-menu-query="">Nagu lako nuemimas</a>
+              <a href="#salons" data-menu-category="Nagai" data-menu-query="builder">Nagu priauginimas</a>
+              <a href="#salons" data-menu-category="Nagai" data-menu-query="builder">Nagu papildymas geliu</a>
+              <a class="mega-link-strong" href="#salons" data-menu-category="Nagai" data-menu-query="">Visos nagu prieziuros paslaugos</a>
+            </div>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="aura" data-service-id="gel">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #f3d0c1 0%, #c84148 45%, #f4ede8 100%);"></div>
+              <div class="mega-promo-copy">Atsipalaiduok. Cia sutaupysi be streso</div>
+            </button>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="milk-nails" data-service-id="builder">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #9b6b54 0%, #dbc4b5 52%, #f8f4ef 100%);"></div>
+              <div class="mega-promo-copy">Jokiu nuluzusiu nagu</div>
+            </button>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-depiliacija"
+            data-mega-panel="depiliacija"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#journey">Moteru koju depiliacija vasku</a>
+              <a href="#journey">Moteru ranku ir pazastu depiliacija vasku</a>
+              <a href="#journey">Moteru depiliacija cukrumi</a>
+              <a href="#journey">Vyru depiliacija vasku</a>
+              <a href="#journey">Moteru bikini depiliacija vasku</a>
+              <a href="#journey">Plauku salinimas lazeriu</a>
+              <a class="mega-link-strong" href="#journey">Visos depiliacijos paslaugos</a>
+            </div>
+
+            <a class="mega-promo-card" href="#journey">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #b97e0d 0%, #f2c54c 50%, #f7efe2 100%);"></div>
+              <div class="mega-promo-copy">Rezervuok. Depiliuok. Atsipalaiduok.</div>
+            </a>
+
+            <a class="mega-promo-card" href="#journey">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #4c7f2b 0%, #a4c36c 48%, #ecd0a6 100%);"></div>
+              <div class="mega-promo-copy">Ilgalaikis svelnumas? Atrask lazerio nauda</div>
+            </a>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-masazas"
+            data-mega-panel="masazas"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#salons" data-menu-category="Masazai" data-menu-query="atpalaiduojantis">Atpalaiduojantis masazas</a>
+              <a href="#salons" data-menu-category="Masazai" data-menu-query="nugaros">Gilus nugaros masazas</a>
+              <a href="#salons" data-menu-category="Masazai" data-menu-query="">Sportinis atsigavimas</a>
+              <a href="#salons" data-menu-category="Masazai" data-menu-query="poru">Poru ritualas</a>
+              <a href="#salons" data-menu-category="Masazai" data-menu-query="">Nugaros ir kaklo zona</a>
+              <a href="#salons" data-menu-category="Masazai" data-menu-query="">Vakarinis spa laikas</a>
+              <a class="mega-link-strong" href="#salons" data-menu-category="Masazai" data-menu-query="">Visos masazo paslaugos</a>
+            </div>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="ritual-studio" data-service-id="deep">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #d7c9b4 0%, #8b7a66 52%, #f1ece4 100%);"></div>
+              <div class="mega-promo-copy">Tyla, spaudimas ir lengvesne nugara</div>
+            </button>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="calm" data-service-id="couple">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #6d667f 0%, #b9a9cc 46%, #efe9f8 100%);"></div>
+              <div class="mega-promo-copy">Po darbo rinkis poru arba solo rituala</div>
+            </button>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-veidas"
+            data-mega-panel="veidas"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="hydra">Hydra glow procedura</a>
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="valymas">Veido valymas</a>
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="antakiu">Antakiu laminavimas</a>
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="">Blakstienu pakelimas</a>
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="">Glow ritualai</a>
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="">Oda pries rengini</a>
+              <a class="mega-link-strong" href="#salons" data-menu-category="Veidas" data-menu-query="">Visos veido proceduros</a>
+            </div>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="amber" data-service-id="hydra">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #f7d6c8 0%, #f3b49d 46%, #fbf2ea 100%);"></div>
+              <div class="mega-promo-copy">Greitas glow, kai nori efekto siandien</div>
+            </button>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="nord" data-service-id="brow-lam">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #d7ccb7 0%, #8f7f67 48%, #2d2b31 100%);"></div>
+              <div class="mega-promo-copy">Tvarkingi antakiai ir rami oda vienoje vietoje</div>
+            </button>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-kunas"
+            data-mega-panel="kunas"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#journey">Limfodrenazas</a>
+              <a href="#journey">Kuno ritualai</a>
+              <a href="#journey">Atpalaiduojancios proceduros</a>
+              <a href="#journey">Kuno prieziura po sporto</a>
+              <a href="#journey">Silkinantis pilingas</a>
+              <a href="#journey">Detox ritualai</a>
+              <a class="mega-link-strong" href="#journey">Visos kuno proceduros</a>
+            </div>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="tyla-body" data-service-id="relax">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #98a889 0%, #d8ccb2 44%, #f6f0e8 100%);"></div>
+              <div class="mega-promo-copy">Detox ritualai ramiam savaitgaliui</div>
+            </button>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="ember-touch" data-service-id="deep">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #6b4c42 0%, #c7a88d 50%, #f4ebe1 100%);"></div>
+              <div class="mega-promo-copy">Kuno prieziura, kuri neskuba</div>
+            </button>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-vyrams"
+            data-mega-panel="vyrams"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#salons" data-menu-category="Plaukai" data-menu-query="kirpimas">Vyriskas kirpimas</a>
+              <a href="#journey">Barzdos konturai</a>
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="antakiu">Antakiu tvarkymas</a>
+              <a href="#salons" data-menu-category="Masazai" data-menu-query="nugaros">Sportinis masazas</a>
+              <a href="#journey">Galvos odos prieziura</a>
+              <a href="#salons" data-menu-category="Veidas" data-menu-query="valymas">Greita veido procedura</a>
+              <a class="mega-link-strong" href="#salons" data-menu-category="Plaukai" data-menu-query="kirpimas">Paslaugos vyrams</a>
+            </div>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="atelier27" data-service-id="cut">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #28334e 0%, #8e8577 50%, #ece6dc 100%);"></div>
+              <div class="mega-promo-copy">Barzdai, plaukams ir greitam resetui</div>
+            </button>
+
+            <button class="mega-promo-card" type="button" data-open-booking data-salon-id="ritual-studio" data-service-id="deep">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #69707d 0%, #b6b9c6 44%, #ead7ce 100%);"></div>
+              <div class="mega-promo-copy">Patogu rezervuoti po darbo</div>
+            </button>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-nauji-salonai"
+            data-mega-panel="nauji-salonai"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#salons" data-menu-category="all" data-menu-city="Vilnius" data-menu-query="">Nauji salonai Vilniuje</a>
+              <a href="#salons" data-menu-category="all" data-menu-city="Kaunas" data-menu-query="">Nauji salonai Kaune</a>
+              <a href="#salons" data-menu-category="all" data-menu-city="Klaipeda" data-menu-query="">Nauji salonai Klaipedoje</a>
+              <a href="#salons" data-menu-category="all" data-menu-query="" data-menu-instant="true">Momentinis patvirtinimas</a>
+              <a href="#salons" data-menu-category="all" data-menu-query="" data-menu-sort="rating">Auksciausi reitingai</a>
+              <a href="#salons" data-menu-category="all" data-menu-query="">Paskutines minutes slotai</a>
+              <a class="mega-link-strong" href="#salons" data-menu-category="all" data-menu-query="">Perziureti visus naujus salonus</a>
+            </div>
+
+            <a class="mega-promo-card" href="#salons">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #f29a81 0%, #f5d9c8 50%, #fff8f3 100%);"></div>
+              <div class="mega-promo-copy">Atrask naujus vardus mieste</div>
+            </a>
+
+            <a class="mega-promo-card" href="#salons">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #9ec2d7 0%, #f4cfbe 52%, #fdf7f3 100%);"></div>
+              <div class="mega-promo-copy">Maziau laukimo, daugiau geru slotu</div>
+            </a>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-dovanu-kuponai"
+            data-mega-panel="dovanu-kuponai"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#journey">Dovana jai</a>
+              <a href="#journey">Dovana jam</a>
+              <a href="#journey">Poros ritualai</a>
+              <a href="#journey">Paskutines minutes kuponas</a>
+              <a href="#journey">Gimtadienio dovana</a>
+              <a href="#journey">Premium dovana</a>
+              <a class="mega-link-strong" href="#journey">Visi dovanu kuponai</a>
+            </div>
+
+            <a class="mega-promo-card" href="#journey">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #f1a08c 0%, #f6d7cf 48%, #fff8f4 100%);"></div>
+              <div class="mega-promo-copy">Isrink dovana per kelias minutes</div>
+            </a>
+
+            <a class="mega-promo-card" href="#journey">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #b68c46 0%, #d9b36d 44%, #7b5b74 100%);"></div>
+              <div class="mega-promo-copy">Grozi, poilsi ir ritualus supakuok i viena kupona</div>
+            </a>
+          </section>
+
+          <section
+            class="mega-panel"
+            id="mega-panel-grozio-gidas"
+            data-mega-panel="grozio-gidas"
+            role="tabpanel"
+            hidden
+          >
+            <div class="mega-links">
+              <a href="#reviews">Kaip issirinkti salona</a>
+              <a href="#reviews">Sezono trendai</a>
+              <a href="#reviews">Greiciausios proceduros</a>
+              <a href="#reviews">Grozio dovanu idejos</a>
+              <a href="#reviews">Rytinis glow planas</a>
+              <a href="#reviews">Po darbo rezervacijos</a>
+              <a class="mega-link-strong" href="#reviews">Skaityti visa gida</a>
+            </div>
+
+            <a class="mega-promo-card" href="#reviews">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #b8d4e2 0%, #f2efe8 48%, #fdfbf8 100%);"></div>
+              <div class="mega-promo-copy">Kuo greiciau issirinksi, tuo lengviau rezervuosi</div>
+            </a>
+
+            <a class="mega-promo-card" href="#reviews">
+              <div class="mega-promo-visual" style="--promo-image: linear-gradient(135deg, #ef9f83 0%, #f5d3c8 44%, #32435d 100%);"></div>
+              <div class="mega-promo-copy">Tendencijos, patarimai ir idejos vienoje vietoje</div>
+            </a>
+          </section>
+        </div>
+      </section>
+
+      <main>
+        <section class="hero hero-showcase" id="discover">
           <div class="hero-copy reveal">
-            <p class="eyebrow">Demonstracine versija grozio salonams</p>
-            <h1>Rezervuok grozio paslaugas taip, kaip tai turetu veikti 2026 m.</h1>
+            <p class="eyebrow">Grozio paieska internetu</p>
+            <h1>Atidek darbus.<br />Rezervuok<br />pasilepinimus.</h1>
             <p class="hero-text">
-              Vienoje vietoje surask manikiura, kirpykla, masaza ar spa. Filtruok
-              pagal miesta, kaina, reitinga ir uzsisakyk laika per kelias sekundes.
+              Atrask kirpyklas, nagu studijas, antakiu specialistus ir masazus
+              vienoje vietoje. Lygink kainas, reitingus, laisvus laikus ir
+              uzsisakyk vizita be skambuciu.
             </p>
 
-            <form class="search-panel" id="search-form">
-              <label class="field">
-                <span>Ko ieskai?</span>
+            <form class="search-panel search-panel-visual" id="search-form">
+              <label class="search-field">
+                <span class="search-icon">⌕</span>
                 <input
                   id="query-input"
                   type="text"
-                  placeholder="Pvz. balayage, manikiuras, masazas"
+                  value="Nagai"
+                  placeholder="Ieskoti proceduru / salonu"
                 />
               </label>
 
-              <label class="field">
-                <span>Miestas</span>
-                <select id="city-select">
-                  <option value="all">Visi miestai</option>
-                  <option value="Vilnius">Vilnius</option>
-                  <option value="Kaunas">Kaunas</option>
-                  <option value="Klaipeda">Klaipeda</option>
+              <label class="search-field">
+                <span class="search-icon">◎</span>
+                <input
+                  id="location-input"
+                  type="text"
+                  value="Vilnius"
+                  placeholder="Ivesk miesta"
+                  list="location-options"
+                />
+              </label>
+
+              <label class="search-field">
+                <span class="search-icon">◫</span>
+                <select id="date-select">
+                  <option value="any">Data nesvarbu</option>
                 </select>
               </label>
 
-              <label class="field">
-                <span>Kategorija</span>
-                <select id="category-select">
-                  <option value="all">Visos kategorijos</option>
-                  <option value="Plaukai">Plaukai</option>
-                  <option value="Nagai">Nagai</option>
-                  <option value="Veidas">Veidas</option>
-                  <option value="Masazai">Masazai</option>
-                </select>
-              </label>
-
-              <button class="primary-button search-button" type="submit">
-                Rasti salonus
+              <button class="primary-button search-button block" type="submit">
+                Ieskoti
               </button>
             </form>
 
+            <datalist id="location-options">
+              <option value="Vilnius"></option>
+              <option value="Kaunas"></option>
+              <option value="Klaipeda"></option>
+              <option value="Naujamiestis"></option>
+              <option value="Senamiestis"></option>
+              <option value="Centras"></option>
+              <option value="Zverynas"></option>
+              <option value="Siaures miestelis"></option>
+              <option value="Silainiai"></option>
+              <option value="Zaliakalnis"></option>
+              <option value="Seskine"></option>
+              <option value="Melnrage"></option>
+              <option value="Pajuris"></option>
+            </datalist>
+
+            <div class="hero-actions">
+              <button class="primary-button" type="button" data-open-booking>
+                Greita rezervacija
+              </button>
+              <button class="ghost-button" type="button" data-open-auth>
+                Atidaryti paskyra
+              </button>
+            </div>
+
             <div class="hero-metrics">
               <article>
-                <strong>240+</strong>
-                <span>aktyviu salonu modelis</span>
+                <strong id="hero-bookings-count">0</strong>
+                <span>aktyvios demo rezervacijos</span>
               </article>
               <article>
-                <strong>4.8/5</strong>
-                <span>vidutinis ivertinimas</span>
+                <strong id="hero-revenue-total">0 EUR</strong>
+                <span>demo mokejimu suma</span>
               </article>
               <article>
-                <strong>24/7</strong>
-                <span>online rezervacija</span>
+                <strong id="hero-salons-count">0</strong>
+                <span>salonu visame kataloge</span>
               </article>
             </div>
           </div>
 
-          <div class="hero-panel reveal delay-1">
-            <div class="hero-card spotlight">
+          <div class="hero-stack reveal delay-1">
+            <article class="hero-card spotlight visual-spotlight">
               <div class="spotlight-top">
                 <p>Populiariausia siandien</p>
-                <span>Vilnius</span>
+                <span>Top rated</span>
               </div>
-              <h2>Luna Beauty House</h2>
-              <p class="rating-line">4.9 * | 1 284 atsiliepimai | nuo 25 EUR</p>
-              <ul class="mini-service-list">
-                <li>Balayage</li>
-                <li>Express manikiuras</li>
-                <li>Veido ritualas</li>
-              </ul>
-              <button class="primary-button block" type="button" data-salon-id="luna">
-                Perziureti laikus
-              </button>
-            </div>
+              <div class="visual-pane">
+                <div class="visual-badge">4.9 * is 1284</div>
+                <div class="visual-copy">
+                  <h2>Luna Beauty House</h2>
+                  <p>Balayage, kirpimai ir express ritualai miesto centre.</p>
+                </div>
+              </div>
+            </article>
 
-            <div class="hero-card schedule-card">
-              <div class="schedule-head">
-                <p>Artimiausi laikai</p>
-                <span>siandien</span>
+            <article class="hero-card control-card">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Kas dabar madinga</p>
+                  <h3>Socialiniuose tinkluose matomiausios proceduros</h3>
+                </div>
+                <span class="status-pill">Trending</span>
               </div>
-              <div class="schedule-grid">
-                <button type="button" data-open-booking>10:30</button>
-                <button type="button" data-open-booking>12:00</button>
-                <button type="button" data-open-booking>14:15</button>
-                <button type="button" data-open-booking>17:00</button>
+              <div class="trend-pills">
+                <button type="button" data-open-booking data-salon-id="amber" data-service-id="hydra">Veido glow procedura</button>
+                <button type="button" data-open-booking data-salon-id="amber" data-service-id="cleanse">Giluminis valymas</button>
+                <button type="button" data-open-booking data-salon-id="luna" data-service-id="balayage">Balayage</button>
+                <button type="button" data-open-booking data-salon-id="nord" data-service-id="brow-lam">Blakstienu laminavimas</button>
+                <button type="button" data-open-booking data-salon-id="calm" data-service-id="relax">Atpalaiduojantis masazas</button>
+                <button type="button" data-open-booking data-salon-id="aura" data-service-id="gel">Gelinis lakavimas</button>
               </div>
-            </div>
+            </article>
+
+            <article class="hero-card schedule-card">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Laisvi laikai siandien</p>
+                  <h3>Greiti pasirinkimai paskutinei minutei</h3>
+                </div>
+                <span class="status-pill status-pill-soft">Online 24/7</span>
+              </div>
+              <div class="mini-timeline">
+                <div>
+                  <span>10:30</span>
+                  <p>Luna Beauty House</p>
+                </div>
+                <div>
+                  <span>12:00</span>
+                  <p>Aura Nail Loft</p>
+                </div>
+                <div>
+                  <span>17:15</span>
+                  <p>Nord Brow & Lash</p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="trend-section reveal">
+          <div class="section-heading compact-heading">
+            <p class="eyebrow">Populiaru dabar</p>
+            <h2>Proceduros, kurias klientes rezervuoja dazniausiai</h2>
+          </div>
+          <div class="trend-links">
+            <a href="#salons">Veido sveitimas su vitaminu C</a>
+            <a href="#salons">RF proceduros</a>
+            <a href="#salons">Klasikine veido procedura</a>
+            <a href="#salons">Mikroadatine terapija</a>
+            <a href="#salons">Limfodrenazas</a>
+            <a href="#salons">Drekinamasis ritualas</a>
           </div>
         </section>
 
         <section class="featured-strip reveal">
           <article>
-            <span>Momentinis patvirtinimas</span>
-            <p>Rezervacija patvirtinama iskart be skambuciu.</p>
+            <span>Patrauklios kainos</span>
+            <p>Rask paskutines minutes laikus arba tylesnes valandas su geresniu pasiulymu.</p>
           </article>
           <article>
-            <span>Lankstus tvarkarastis</span>
-            <p>Rodyk laisvus laikus siandienai, savaitgaliui ar vakarui.</p>
+            <span>Rezervuok visa para</span>
+            <p>Namuose, transporte ar per pietu pertrauka - sistema veikia tada, kai reikia tau.</p>
           </article>
           <article>
-            <span>Patikimi atsiliepimai</span>
-            <p>Klientai mato realias nuomones ir foto rezultatus.</p>
+            <span>Rinkis is geriausiu</span>
+            <p>Vienoje vietoje matai simtus salonu, realius ivertinimus ir laisvus laikus.</p>
           </article>
         </section>
 
         <section class="service-section" id="services">
           <div class="section-heading reveal">
             <p class="eyebrow">Populiariausios kategorijos</p>
-            <h2>Paslaugos, kurias klientai rezervuoja dazniausiai</h2>
+            <h2>Rask tai, ko siandien labiausiai iesko klientai</h2>
           </div>
 
           <div class="service-grid">
@@ -158,7 +611,7 @@
             <button class="service-card reveal delay-1" type="button" data-service-filter="Plaukai">
               <span class="service-emoji">/</span>
               <strong>Plaukai</strong>
-              <small>Kirpimai, dazymai, proceduros</small>
+              <small>Kirpimai, dazymai, atstatymai</small>
             </button>
             <button class="service-card reveal delay-2" type="button" data-service-filter="Nagai">
               <span class="service-emoji">o</span>
@@ -168,12 +621,12 @@
             <button class="service-card reveal" type="button" data-service-filter="Veidas">
               <span class="service-emoji">O</span>
               <strong>Veidas</strong>
-              <small>Antakiai, blakstienos, skincare</small>
+              <small>Antakiai, blakstienos, skin ritualai</small>
             </button>
             <button class="service-card reveal delay-1" type="button" data-service-filter="Masazai">
               <span class="service-emoji">~</span>
               <strong>Masazai</strong>
-              <small>Atpalaiduojantys ir sportiniai ritualai</small>
+              <small>Sportiniai ir atpalaiduojantys seansai</small>
             </button>
           </div>
         </section>
@@ -181,8 +634,8 @@
         <section class="results-section" id="salons">
           <div class="results-toolbar reveal">
             <div>
-              <p class="eyebrow">Atrinkti pasiulymai</p>
-              <h2>Salonai pagal tavo ieskojima</h2>
+              <p class="eyebrow">Atrinkti salonai</p>
+              <h2>Populiariausios vietos tavo paieskai</h2>
             </div>
 
             <div class="toolbar-controls">
@@ -204,7 +657,7 @@
 
           <div class="result-meta">
             <p id="results-summary">Rodomi 0 salonai</p>
-            <div class="city-pills" id="city-pills">
+            <div class="city-pills">
               <button type="button" class="pill active" data-city-filter="all">Visi miestai</button>
               <button type="button" class="pill" data-city-filter="Vilnius">Vilnius</button>
               <button type="button" class="pill" data-city-filter="Kaunas">Kaunas</button>
@@ -215,84 +668,119 @@
           <div class="salon-list" id="salon-list" aria-live="polite"></div>
         </section>
 
-        <section class="how-section" id="how-it-works">
+        <section class="workspace-section" id="workspace">
           <div class="section-heading reveal">
-            <p class="eyebrow">Kaip veikia</p>
-            <h2>Paprastas rezervavimo kelias klientui ir salonui</h2>
+            <p class="eyebrow">Paskyra ir rezervacijos</p>
+            <h2>Vienoje vietoje matyk savo vizitus, pasiulymus ir rezervaciju istorija</h2>
           </div>
 
-          <div class="steps-grid">
-            <article class="step-card reveal">
-              <span>01</span>
-              <h3>Ieskok pagal poreiki</h3>
-              <p>Pasirink paslauga, lokacija, kaina ir matyk tik laisvus laikus.</p>
-            </article>
-            <article class="step-card reveal delay-1">
-              <span>02</span>
-              <h3>Lygink salonus</h3>
-              <p>Reitingai, atsiliepimai, specialistai ir darbai vienoje vietoje.</p>
-            </article>
-            <article class="step-card reveal delay-2">
-              <span>03</span>
-              <h3>Rezervuok per minute</h3>
-              <p>Gauk patvirtinima, priminimus ir galimybe greitai perkelti vizita.</p>
-            </article>
+          <div class="workspace-switcher">
+            <button class="workspace-tab active" type="button" data-switch-workspace="customer">
+              Mano rezervacijos
+            </button>
+            <button class="workspace-tab" type="button" data-switch-workspace="salon">
+              Partneriams
+            </button>
+            <button class="workspace-tab" type="button" data-switch-workspace="admin">
+              Platforma
+            </button>
+          </div>
+
+          <div class="workspace-grid">
+            <section class="workspace-panel" id="workspace-panel" aria-live="polite"></section>
+
+            <aside class="workspace-side">
+              <article class="side-card">
+                <div class="card-header">
+                  <div>
+                    <p class="eyebrow">Paskyra</p>
+                    <h3>Aktyvus profilis</h3>
+                  </div>
+                </div>
+                <div id="session-card"></div>
+              </article>
+
+              <article class="side-card">
+                <div class="card-header">
+                  <div>
+                    <p class="eyebrow">Naujienos</p>
+                    <h3>Naujausi platformos signalai</h3>
+                  </div>
+                </div>
+                <div id="activity-feed" class="activity-feed"></div>
+              </article>
+
+              <article class="side-card">
+                <div class="card-header">
+                  <div>
+                    <p class="eyebrow">Apmokejimai</p>
+                    <h3>Trumpa suvestine</h3>
+                  </div>
+                </div>
+                <div id="payments-card"></div>
+              </article>
+            </aside>
           </div>
         </section>
 
-        <section class="business-section reveal">
-          <div class="business-copy">
-            <p class="eyebrow">Sprendimas salonams</p>
-            <h2>Valdyk klientu srauta, meistru kalendorius ir uzsakymus vienoje platformoje</h2>
-            <p>
-              Demonstracijoje palikau ir B2B kampa: salonas gali matyti rezervaciju
-              srauta, populiariausias paslaugas ir uzpildyti laisvus laikus akcijomis.
-            </p>
+        <section class="journey-section" id="journey">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Atrask daugiau</p>
+            <h2>Pasiulymai ir turinys, kurie padeda apsispresti greiciau</h2>
           </div>
 
-          <div class="business-stats">
-            <article>
-              <strong>+31%</strong>
-              <span>vidutinis pakartotiniu klientu augimas</span>
+          <div class="journey-grid">
+            <article class="journey-card reveal">
+              <span>Dovanu kuponas</span>
+              <h3>Padovanok grozio paslauga vienu pirkimu</h3>
+              <p>Vienas kuponas gali tapti manikiuru, masazu, kirpimu ar kitu maloniu ritualu.</p>
             </article>
-            <article>
-              <strong>2 min.</strong>
-              <span>salono registracija i platforma</span>
+            <article class="journey-card reveal delay-1">
+              <span>Top vietos</span>
+              <h3>Perziurek geriausiai ivertintus salonus</h3>
+              <p>Top vietu sarasai leidzia greitai atsirinkti patikimiausius variantus mieste.</p>
             </article>
-            <article>
-              <strong>0 skambuciu</strong>
-              <span>kai klientas rezervuoja savarankiskai</span>
+            <article class="journey-card reveal delay-2">
+              <span>Programeles jausmas</span>
+              <h3>Naudok rezervacijas taip pat lengvai ir telefone</h3>
+              <p>Visa patirtis sukurta taip, kad greitai veiktu tiek desktop, tiek mobile lange.</p>
             </article>
           </div>
         </section>
 
         <section class="review-section" id="reviews">
           <div class="section-heading reveal">
-            <p class="eyebrow">Klientu balsas</p>
-            <h2>Kas patiktu tavo vartotojams</h2>
+            <p class="eyebrow">Narsyk pagal procedura</p>
+            <h2>Nori pamatyti daugiau? Pradek nuo to, ko tau reikia siandien</h2>
           </div>
 
           <div class="review-grid">
             <article class="review-card reveal">
-              <p>
-                "Pagaliau matau realius laikus ir kainas be skambuciu. Rezervacija uztruko
-                maziau nei minute."
-              </p>
-              <strong>Monika, Vilnius</strong>
+              <p>Kirpyklos</p>
+              <strong>Plaukams ir sukuosenoms</strong>
+              <div class="link-stack">
+                <a href="#salons">Kirpyklos Vilniuje</a>
+                <a href="#salons">Kirpyklos Kaune</a>
+                <a href="#salons">Kirpyklos Klaipedoje</a>
+              </div>
             </article>
             <article class="review-card reveal delay-1">
-              <p>
-                "Labiausiai patinka, kad galiu lyginti salonus pagal atsiliepimus ir
-                arti esancias vietas."
-              </p>
-              <strong>Karolina, Kaunas</strong>
+              <p>Vyrams</p>
+              <strong>Barzdai, plaukams ir grooming</strong>
+              <div class="link-stack">
+                <a href="#salons">Vyru kirpyklos Vilniuje</a>
+                <a href="#salons">Vyru kirpyklos Kaune</a>
+                <a href="#salons">Vyru kirpyklos Klaipedoje</a>
+              </div>
             </article>
             <article class="review-card reveal delay-2">
-              <p>
-                "Tokio tipo sistema salonui taupo laika, nes administratore nebesedi ant
-                telefono visa diena."
-              </p>
-              <strong>Simona, salono vadove</strong>
+              <p>Masazai ir nagai</p>
+              <strong>Atsipalaidavimui ir kasdieniam groziui</strong>
+              <div class="link-stack">
+                <a href="#salons">Masazai Vilniuje</a>
+                <a href="#salons">Manikiuras Kaune</a>
+                <a href="#salons">Pedikiuras Klaipedoje</a>
+              </div>
             </article>
           </div>
         </section>
@@ -300,99 +788,166 @@
 
       <footer class="site-footer">
         <div>
-          <a class="brand footer-brand" href="#top">
-            <span class="brand-mark">GL</span>
-            <span class="brand-text">GrozioLaikas</span>
+          <a class="brand footer-brand" href="#discover">
+            <span class="brand-mark">L&#381;</span>
+            <span class="brand-copy">
+              <strong class="brand-text">Lai&#382;yklel&#279;</strong>
+              <small>rezervacijos internetu</small>
+            </span>
           </a>
-          <p>Demonstracinis projektas grozio salonu rezervacijos platformai.</p>
+          <p>Ikveptas grozio rezervaciju platformu formato, bet sukurtas kaip originalus demonstracinis puslapis.</p>
         </div>
         <div class="footer-links">
+          <a href="#discover">Paieska</a>
           <a href="#services">Paslaugos</a>
           <a href="#salons">Salonai</a>
-          <a href="#how-it-works">Kaip veikia</a>
-          <a href="#reviews">Atsiliepimai</a>
+          <a href="#journey">Kaip veikia</a>
         </div>
       </footer>
     </div>
 
-    <dialog class="booking-modal" id="booking-modal">
-      <form class="booking-shell" method="dialog">
+    <dialog class="auth-modal" id="auth-modal">
+      <form class="modal-shell auth-shell" method="dialog">
         <button class="modal-close" type="submit" aria-label="Uzdaryti">x</button>
-        <div class="booking-copy">
-          <p class="eyebrow">Greita rezervacija</p>
-          <h2 id="booking-title">Rezervuok vizita</h2>
-          <p id="booking-subtitle">
-            Pasirink specialista, data ir palik savo kontaktus demonstracijai.
+        <div class="modal-copy">
+          <p class="eyebrow">Prisijungimas</p>
+          <h2>Pasirink profili ir atidaryk tau aktualia Lai&#382;yklel&#279; puse</h2>
+          <p>
+            Prisijungimas cia demonstracinis, bet sesija ir pasirinktas profilis
+            lieka issaugoti narsykleje.
           </p>
         </div>
 
-        <div class="booking-grid">
-          <label class="field">
-            <span>Vardas</span>
-            <input id="booking-name" type="text" placeholder="Tavo vardas" required />
-          </label>
-          <label class="field">
-            <span>Telefonas</span>
-            <input id="booking-phone" type="tel" placeholder="+370..." required />
-          </label>
-          <label class="field">
-            <span>Data</span>
-            <input id="booking-date" type="date" required />
-          </label>
-          <label class="field">
-            <span>Laikas</span>
-            <select id="booking-time" required>
-              <option value="">Pasirink laika</option>
-            </select>
-          </label>
+        <div class="auth-grid">
+          <article class="auth-card">
+            <p class="eyebrow">Kliente</p>
+            <h3>Monika Petrauske</h3>
+            <p>Matys artimiausius vizitus, lojaluma, mokejimus ir rezervaciju istorija.</p>
+            <button class="primary-button block" type="button" data-login-role="customer">
+              Prisijungti kaip kliente
+            </button>
+          </article>
+
+          <article class="auth-card">
+            <p class="eyebrow">Salonas</p>
+            <h3>Simona Vaitkute</h3>
+            <p>Valdys Luna Beauty House uzimtuma, pajamu suvestine ir dienos tvarkarasti.</p>
+            <button class="primary-button block" type="button" data-login-role="salon">
+              Prisijungti kaip salono vadove
+            </button>
+          </article>
+
+          <article class="auth-card">
+            <p class="eyebrow">Admin</p>
+            <h3>Platformos valdymas</h3>
+            <p>Matys miesto performance, aktyvuma ir bendra rezervaciju srauta.</p>
+            <button class="primary-button block" type="button" data-login-role="admin">
+              Prisijungti kaip admin
+            </button>
+          </article>
         </div>
 
-        <label class="field full">
-          <span>Pastabos</span>
-          <textarea
-            id="booking-notes"
-            rows="4"
-            placeholder="Pvz. noriu naturalaus look, po darbo, pageidauju konkretaus meistro"
-          ></textarea>
-        </label>
-
-        <div class="booking-actions">
-          <p id="booking-message" class="booking-message"></p>
-          <button class="primary-button" id="booking-submit" type="button">
-            Patvirtinti rezervacija
-          </button>
-        </div>
+        <button class="ghost-button wide-button" type="button" id="logout-button">
+          Atsijungti
+        </button>
       </form>
     </dialog>
 
-    <template id="salon-card-template">
-      <article class="salon-card reveal">
-        <div class="salon-card-main">
-          <div class="salon-head">
-            <div>
-              <p class="salon-city"></p>
-              <h3 class="salon-name"></h3>
-            </div>
-            <span class="instant-badge">Momentinis</span>
-          </div>
-
-          <p class="salon-meta"></p>
-          <p class="salon-description"></p>
-          <div class="service-tags"></div>
+    <dialog class="booking-modal" id="booking-modal">
+      <form class="modal-shell booking-shell" method="dialog">
+        <button class="modal-close" type="submit" aria-label="Uzdaryti">x</button>
+        <div class="modal-copy">
+          <p class="eyebrow">Rezervacijos srautas</p>
+          <h2 id="booking-title">Rezervuok vizita</h2>
+          <p id="booking-subtitle">
+            Pasirink paslauga, specialista, laika ir atsiskaitymo buda.
+          </p>
         </div>
 
-        <div class="salon-card-side">
-          <div class="price-box">
-            <strong class="salon-price"></strong>
-            <span>nuo</span>
-          </div>
-          <div class="slot-list"></div>
-          <button class="primary-button block book-button" type="button">
-            Rezervuoti
-          </button>
+        <div class="booking-progress" id="booking-progress">
+          <span class="progress-step active">1. Paslauga</span>
+          <span class="progress-step">2. Laikas</span>
+          <span class="progress-step">3. Mokejimas</span>
         </div>
-      </article>
-    </template>
+
+        <section class="booking-step" data-step-panel="1">
+          <div class="booking-grid two-col">
+            <label class="field">
+              <span>Paslauga</span>
+              <select id="booking-service"></select>
+            </label>
+            <label class="field">
+              <span>Specialistas</span>
+              <select id="booking-specialist"></select>
+            </label>
+          </div>
+          <div class="booking-summary-card" id="service-preview"></div>
+        </section>
+
+        <section class="booking-step is-hidden" data-step-panel="2">
+          <div class="booking-grid two-col">
+            <label class="field">
+              <span>Data</span>
+              <select id="booking-date"></select>
+            </label>
+            <label class="field">
+              <span>Laisvi laikai</span>
+              <div class="slot-grid" id="booking-slot-grid"></div>
+            </label>
+          </div>
+
+          <div class="booking-grid two-col">
+            <label class="field">
+              <span>Vardas</span>
+              <input id="booking-name" type="text" placeholder="Tavo vardas" />
+            </label>
+            <label class="field">
+              <span>Telefonas</span>
+              <input id="booking-phone" type="tel" placeholder="+370..." />
+            </label>
+            <label class="field full">
+              <span>El. pastas</span>
+              <input id="booking-email" type="email" placeholder="vardas@email.lt" />
+            </label>
+            <label class="field full">
+              <span>Pastabos</span>
+              <textarea
+                id="booking-notes"
+                rows="3"
+                placeholder="Pvz. noriu naturalios spalvos, po darbo, pageidauju konkretaus specialisto"
+              ></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="booking-step is-hidden" data-step-panel="3">
+          <div class="payment-grid" id="payment-methods">
+            <button class="payment-card active" type="button" data-payment-method="card">
+              <strong>Kortele</strong>
+              <span>Greitas apmokejimas ir momentinis patvirtinimas</span>
+            </button>
+            <button class="payment-card" type="button" data-payment-method="applepay">
+              <strong>Apple Pay</strong>
+              <span>Vieno paspaudimo mokejimo scenarijus greitam rezervavimui</span>
+            </button>
+            <button class="payment-card" type="button" data-payment-method="onsite">
+              <strong>Moketi salone</strong>
+              <span>Rezervacija su nedideliu uzstatu ir likuciu vietoje</span>
+            </button>
+          </div>
+
+          <div class="booking-summary-card" id="booking-summary"></div>
+        </section>
+
+        <div class="booking-actions">
+          <p id="booking-message" class="booking-message"></p>
+          <div class="action-row">
+            <button class="ghost-button" id="booking-back" type="button">Atgal</button>
+            <button class="primary-button" id="booking-next" type="button">Toliau</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
 
     <script src="./app.js"></script>
   </body>

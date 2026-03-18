@@ -1422,9 +1422,11 @@ function createSeedBooking({
   const service = getService(salon, serviceId);
   const specialist = getSpecialist(salon, specialistId);
   const paymentAmount = paymentMethod === "onsite" ? Math.round(service.price * 0.2) : service.price;
+  const createdAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
   return {
     id,
+    code: makeBookingCode(id),
     salonId,
     salonName: salon.name,
     serviceId,
@@ -1442,7 +1444,8 @@ function createSeedBooking({
     totalAmount: service.price,
     notes: "",
     status,
-    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    createdAt,
+    updatedAt: createdAt,
   };
 }
 
@@ -1542,6 +1545,7 @@ const defaultState = {
     query: "",
     location: "",
     date: "any",
+    requestedTime: "",
     city: "all",
     category: "all",
     sort: "recommended",
@@ -1552,8 +1556,11 @@ const defaultState = {
   bookings: seedBookings,
   payments: seedPayments,
   activities: seedActivities,
+  recentQueries: ["Nagai"],
   selectedSpecialists: {},
+  showResults: false,
   bookingDraft: null,
+  bookingContext: null,
   bookingStep: 1,
 };
 
@@ -1563,11 +1570,24 @@ const refs = {
   sessionLabel: document.querySelector("#session-label"),
   megaMenu: document.querySelector("#mega-menu"),
   searchForm: document.querySelector("#search-form"),
+  searchQueryGroup: document.querySelector("#search-query-group"),
   queryInput: document.querySelector("#query-input"),
+  searchSuggestions: document.querySelector("#search-suggestions"),
+  recentSearchesSection: document.querySelector("#recent-searches-section"),
+  recentSearchList: document.querySelector("#recent-search-list"),
   locationInput: document.querySelector("#location-input"),
+  searchDateGroup: document.querySelector("#search-date-group"),
+  dateTrigger: document.querySelector("#date-trigger"),
+  dateDisplay: document.querySelector("#date-display"),
+  datePanel: document.querySelector("#search-date-panel"),
   dateSelect: document.querySelector("#date-select"),
+  customDateInput: document.querySelector("#custom-date-input"),
+  timeInput: document.querySelector("#time-input"),
+  timeDisplay: document.querySelector("#time-display"),
   sortSelect: document.querySelector("#sort-select"),
   instantOnly: document.querySelector("#instant-only"),
+  resultsSection: document.querySelector("#salons"),
+  workspaceSection: document.querySelector("#workspace"),
   salonList: document.querySelector("#salon-list"),
   resultsSummary: document.querySelector("#results-summary"),
   workspacePanel: document.querySelector("#workspace-panel"),
@@ -1608,9 +1628,21 @@ initializeMegaMenu();
 populateDateFilterOptions();
 hydrateControls();
 renderAll();
+initializeSearchPanel();
 
 refs.searchForm.addEventListener("submit", handleSearchSubmit);
 refs.queryInput.addEventListener("input", handleSearchLiveInput);
+refs.queryInput.addEventListener("keydown", handleQueryInputKeydown);
+if (refs.dateTrigger) {
+  refs.dateTrigger.addEventListener("click", handleDateTriggerClick);
+  refs.dateTrigger.addEventListener("keydown", handleDateTriggerKeydown);
+}
+if (refs.customDateInput) {
+  refs.customDateInput.addEventListener("change", handleCustomDateChange);
+}
+if (refs.timeInput) {
+  refs.timeInput.addEventListener("change", handleTimeInputChange);
+}
 refs.sortSelect.addEventListener("change", () => {
   state.filters.sort = refs.sortSelect.value;
   persistAndRender();
@@ -1667,6 +1699,13 @@ refs.bookingModal.addEventListener("click", (event) => {
   }
 });
 
+refs.bookingModal.addEventListener("close", () => {
+  state.bookingDraft = null;
+  state.bookingContext = null;
+  state.bookingStep = 1;
+  refs.bookingMessage.textContent = "";
+});
+
 function initializeMegaMenu() {
   if (!refs.megaMenu || !refs.megaTriggers.length || !refs.megaPanels.length) {
     return;
@@ -1703,6 +1742,8 @@ function openMegaMenu() {
     return;
   }
 
+  closeSearchSuggestions();
+  closeDatePanel();
   refs.megaMenu.classList.add("open");
   refs.megaMenu.setAttribute("data-open", "true");
 }
@@ -1730,9 +1771,255 @@ function setActiveMegaPanel(target) {
   });
 }
 
+function initializeSearchPanel() {
+  if (!refs.searchForm || !refs.searchQueryGroup || !refs.queryInput || !refs.searchSuggestions) {
+    return;
+  }
+
+  renderSearchSuggestions();
+  renderSearchDatePanel();
+  closeSearchSuggestions();
+  closeDatePanel();
+
+  refs.queryInput.addEventListener("click", openSearchSuggestions);
+  refs.searchQueryGroup.addEventListener("focusout", handleSearchGroupFocusOut);
+}
+
+function openSearchSuggestions() {
+  if (!refs.searchForm || !refs.queryInput || !refs.searchSuggestions) {
+    return;
+  }
+
+  closeMegaMenu();
+  closeDatePanel();
+  refs.searchForm.classList.add("search-query-expanded");
+  refs.queryInput.setAttribute("aria-expanded", "true");
+  refs.searchSuggestions.setAttribute("aria-hidden", "false");
+}
+
+function closeSearchSuggestions() {
+  if (!refs.searchForm || !refs.queryInput || !refs.searchSuggestions) {
+    return;
+  }
+
+  refs.searchForm.classList.remove("search-query-expanded");
+  refs.queryInput.setAttribute("aria-expanded", "false");
+  refs.searchSuggestions.setAttribute("aria-hidden", "true");
+}
+
+function renderSearchSuggestions() {
+  if (!refs.recentSearchesSection || !refs.recentSearchList) {
+    return;
+  }
+
+  const latestQuery = (state.recentQueries || []).filter(Boolean)[0];
+  refs.recentSearchesSection.hidden = !latestQuery;
+  refs.recentSearchList.innerHTML = latestQuery
+    ? `<button class="search-recent-item" type="button" data-search-term="${escapeHtml(latestQuery)}">${escapeHtml(latestQuery)}</button>`
+    : "";
+}
+
+function saveRecentQuery(query) {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) {
+    return;
+  }
+
+  state.recentQueries = [
+    normalizedQuery,
+    ...(state.recentQueries || []).filter((item) => item.toLowerCase() !== normalizedQuery.toLowerCase()),
+  ].slice(0, 5);
+}
+
+function applySearchSuggestion(query) {
+  const normalizedQuery = query.trim();
+  refs.queryInput.value = normalizedQuery;
+  state.filters.query = normalizedQuery;
+  saveRecentQuery(normalizedQuery);
+  closeSearchSuggestions();
+  persistAndRender();
+  refs.locationInput.focus();
+}
+
+function openDatePanel() {
+  if (!refs.searchForm || !refs.dateTrigger || !refs.datePanel) {
+    return;
+  }
+
+  closeMegaMenu();
+  closeSearchSuggestions();
+  renderSearchDatePanel();
+  refs.searchForm.classList.add("search-date-expanded");
+  refs.dateTrigger.setAttribute("aria-expanded", "true");
+  refs.datePanel.setAttribute("aria-hidden", "false");
+}
+
+function closeDatePanel() {
+  if (!refs.searchForm || !refs.dateTrigger || !refs.datePanel) {
+    return;
+  }
+
+  refs.searchForm.classList.remove("search-date-expanded");
+  refs.dateTrigger.setAttribute("aria-expanded", "false");
+  refs.datePanel.setAttribute("aria-hidden", "true");
+}
+
+function handleDateTriggerClick(event) {
+  event.preventDefault();
+  if (refs.searchForm.classList.contains("search-date-expanded")) {
+    closeDatePanel();
+    return;
+  }
+
+  openDatePanel();
+}
+
+function handleDateTriggerKeydown(event) {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    handleDateTriggerClick(event);
+    return;
+  }
+
+  if (event.key === "Escape") {
+    closeDatePanel();
+  }
+}
+
+function handleQueryInputKeydown(event) {
+  if (event.key === "Escape") {
+    closeSearchSuggestions();
+  }
+}
+
+function handleSearchGroupFocusOut(event) {
+  const nextTarget = event.relatedTarget;
+  if (!nextTarget || !refs.searchQueryGroup.contains(nextTarget)) {
+    closeSearchSuggestions();
+  }
+}
+
+function handleCustomDateChange() {
+  if (!refs.customDateInput) {
+    return;
+  }
+
+  state.filters.date = refs.customDateInput.value || "any";
+  renderSearchDatePanel();
+  persistAndRender();
+}
+
+function handleTimeInputChange() {
+  state.filters.requestedTime = refs.timeInput?.value || "";
+  renderSearchDatePanel();
+  persistState();
+}
+
+function applyDatePreset(preset) {
+  if (preset === "any") {
+    state.filters.date = "any";
+    state.filters.requestedTime = "";
+  }
+
+  if (preset === "today") {
+    state.filters.date = upcomingDates[0];
+  }
+
+  if (preset === "tomorrow") {
+    state.filters.date = upcomingDates[1] || upcomingDates[0];
+  }
+
+  renderSearchDatePanel();
+  persistAndRender();
+}
+
+function getDateDisplayLabel() {
+  if (state.filters.date === "any") {
+    return "Data nesvarbu";
+  }
+
+  if (state.filters.date === upcomingDates[0]) {
+    return "Siandien";
+  }
+
+  if (state.filters.date === upcomingDates[1]) {
+    return "Rytoj";
+  }
+
+  return formatDateLabel(state.filters.date);
+}
+
+function renderSearchDatePanel() {
+  if (!refs.dateDisplay || !refs.dateSelect) {
+    return;
+  }
+
+  if (
+    state.filters.date !== "any" &&
+    !Array.from(refs.dateSelect.options).some((option) => option.value === state.filters.date)
+  ) {
+    refs.dateSelect.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${state.filters.date}">${formatDateLabel(state.filters.date)}</option>`
+    );
+  }
+
+  refs.dateSelect.value = state.filters.date;
+  refs.dateDisplay.textContent = getDateDisplayLabel();
+  refs.dateDisplay.classList.toggle("search-date-label-active", state.filters.date !== "any");
+
+  if (refs.customDateInput) {
+    refs.customDateInput.value = state.filters.date === "any" ? "" : state.filters.date;
+  }
+
+  if (refs.timeInput) {
+    refs.timeInput.value = state.filters.requestedTime || "";
+  }
+
+  if (refs.timeDisplay) {
+    refs.timeDisplay.textContent = state.filters.requestedTime || "Pasirink laika...";
+    refs.timeDisplay.classList.toggle("search-date-label-active", Boolean(state.filters.requestedTime));
+  }
+
+  document.querySelectorAll("[data-date-option]").forEach((button) => {
+    const preset = button.getAttribute("data-date-option");
+    const isActive =
+      (preset === "any" && state.filters.date === "any") ||
+      (preset === "today" && state.filters.date === upcomingDates[0]) ||
+      (preset === "tomorrow" && state.filters.date === upcomingDates[1]);
+    button.classList.toggle("active", isActive);
+  });
+}
+
 function handleDocumentClick(event) {
   if (refs.megaMenu && !event.target.closest("#mega-menu")) {
     closeMegaMenu();
+  }
+
+  if (refs.searchQueryGroup && !event.target.closest("#search-query-group")) {
+    closeSearchSuggestions();
+  }
+
+  if (refs.searchDateGroup && !event.target.closest("#search-date-group")) {
+    closeDatePanel();
+  }
+
+  const searchTermButton = event.target.closest("[data-search-term]");
+  if (searchTermButton) {
+    const searchTerm = searchTermButton.getAttribute("data-search-term");
+    if (searchTerm) {
+      applySearchSuggestion(searchTerm);
+    }
+    return;
+  }
+
+  const dateOptionButton = event.target.closest("[data-date-option]");
+  if (dateOptionButton) {
+    const preset = dateOptionButton.getAttribute("data-date-option");
+    if (preset) {
+      applyDatePreset(preset);
+    }
+    return;
   }
 
   const openAuthButton = event.target.closest("[data-open-auth]");
@@ -1785,6 +2072,7 @@ function handleDocumentClick(event) {
     if (query !== null) {
       state.filters.query = query;
       refs.queryInput.value = query;
+      saveRecentQuery(query);
     }
 
     if (city !== null) {
@@ -1803,8 +2091,12 @@ function handleDocumentClick(event) {
       refs.instantOnly.checked = state.filters.instantOnly;
     }
 
+    state.showResults = true;
     closeMegaMenu();
+    closeSearchSuggestions();
+    closeDatePanel();
     persistAndRender();
+    scrollToResults();
     return;
   }
 
@@ -1812,6 +2104,7 @@ function handleDocumentClick(event) {
   if (serviceFilterButton) {
     const category = serviceFilterButton.getAttribute("data-service-filter");
     state.filters.category = category;
+    state.showResults = true;
     persistAndRender();
     return;
   }
@@ -1822,6 +2115,7 @@ function handleDocumentClick(event) {
     state.filters.city = city;
     state.filters.location = city === "all" ? "" : city;
     refs.locationInput.value = state.filters.location;
+    state.showResults = true;
     persistAndRender();
     return;
   }
@@ -1843,7 +2137,21 @@ function handleDocumentClick(event) {
     refs.queryInput.value = "";
     refs.locationInput.value = "";
     refs.dateSelect.value = "any";
+    state.filters.requestedTime = "";
+    state.showResults = true;
+    closeSearchSuggestions();
+    closeDatePanel();
     persistAndRender();
+    return;
+  }
+
+  const bookingActionButton = event.target.closest("[data-booking-action]");
+  if (bookingActionButton) {
+    const action = bookingActionButton.getAttribute("data-booking-action");
+    const bookingId = bookingActionButton.getAttribute("data-booking-id");
+    if (action && bookingId) {
+      handleWorkspaceBookingAction(action, bookingId);
+    }
     return;
   }
 
@@ -1877,12 +2185,20 @@ function handleSearchSubmit(event) {
   event.preventDefault();
   state.filters.query = refs.queryInput.value.trim();
   state.filters.location = refs.locationInput.value.trim();
-  state.filters.date = refs.dateSelect.value;
+  state.filters.date = refs.dateSelect.value || state.filters.date || "any";
+  state.filters.requestedTime = refs.timeInput?.value || "";
+  saveRecentQuery(state.filters.query);
   if (state.filters.location) {
     const matchedCity = salons.find((salon) => salon.city.toLowerCase() === state.filters.location.toLowerCase())?.city;
     state.filters.city = matchedCity || "all";
+  } else {
+    state.filters.city = "all";
   }
+  state.showResults = true;
+  closeSearchSuggestions();
+  closeDatePanel();
   persistAndRender();
+  scrollToResults();
 }
 
 function handleSearchLiveInput() {
@@ -1946,6 +2262,8 @@ function handleBookingNext() {
 
 function confirmBooking() {
   const draft = state.bookingDraft;
+  const bookingContext = state.bookingContext || { mode: "create", bookingId: null };
+  const existingBooking = bookingContext.mode === "edit" ? getBookingById(bookingContext.bookingId) : null;
   const salon = getSalon(draft.salonId);
   const service = getService(salon, draft.serviceId);
   const specialist = getSpecialist(salon, draft.specialistId);
@@ -1955,9 +2273,20 @@ function confirmBooking() {
     return;
   }
 
+  const availableSlots = getAvailableSlots(salon.id, draft.date, existingBooking?.id || "");
+  if (!availableSlots.includes(draft.time)) {
+    refs.bookingMessage.textContent = "Pasirinktas laikas ka tik buvo uzimtas. Pasirink kita slota.";
+    renderBookingFlow();
+    return;
+  }
+
+  const nowIso = new Date().toISOString();
+  const bookingId = existingBooking?.id || makeId("booking");
   const paymentAmount = draft.paymentMethod === "onsite" ? Math.round(service.price * 0.2) : service.price;
-  const booking = {
-    id: makeId("booking"),
+  const booking = normalizeBooking({
+    ...(existingBooking || {}),
+    id: bookingId,
+    code: existingBooking?.code || makeBookingCode(bookingId),
     salonId: salon.id,
     salonName: salon.name,
     serviceId: service.id,
@@ -1969,53 +2298,212 @@ function confirmBooking() {
     customerName: draft.customerName.trim(),
     customerEmail: draft.customerEmail.trim(),
     customerPhone: draft.customerPhone.trim(),
-    customerId: profiles.customer.id,
+    customerId: existingBooking?.customerId || profiles.customer.id,
     paymentMethod: draft.paymentMethod,
     paymentAmount,
     totalAmount: service.price,
     notes: draft.notes.trim(),
     status: draft.paymentMethod === "onsite" ? "Uzstatas" : "Patvirtinta",
-    createdAt: new Date().toISOString(),
-  };
+    createdAt: existingBooking?.createdAt || nowIso,
+    updatedAt: nowIso,
+  });
 
-  const payment = {
-    id: makeId("payment"),
-    bookingId: booking.id,
-    amount: paymentAmount,
-    method: booking.paymentMethod,
-    status: booking.paymentMethod === "onsite" ? "Uzstatas" : "Apmoketa",
-    label: booking.serviceName,
-    createdAt: booking.createdAt,
-  };
+  const payment = buildPaymentRecordForBooking(booking, getPaymentByBookingId(booking.id));
 
-  state.bookings = [booking, ...state.bookings];
-  state.payments = [payment, ...state.payments];
+  if (existingBooking) {
+    state.bookings = state.bookings.map((item) => (item.id === booking.id ? booking : item));
+    state.payments = upsertPaymentRecord(state.payments, payment);
+    pushActivityEntry(
+      `Atnaujinta rezervacija: ${booking.salonName}`,
+      `${formatDateLabel(booking.date)} ${booking.time} | ${booking.serviceName}`,
+      "info"
+    );
+    refs.bookingMessage.textContent = "Rezervacija sekmingai perplanuota.";
+  } else {
+    state.bookings = [booking, ...state.bookings];
+    state.payments = [payment, ...state.payments];
+    pushActivityEntry(
+      `Sukurta rezervacija: ${booking.salonName}`,
+      `${booking.date} ${booking.time} | ${booking.serviceName} | ${formatPaymentLabel(booking.paymentMethod)}`,
+      "success"
+    );
+    refs.bookingMessage.textContent =
+      booking.paymentMethod === "onsite"
+        ? "Rezervacija sukurta, uzstatas uzfiksuotas."
+        : "Rezervacija ir apmokejimas patvirtinti.";
+  }
+
   if (!state.currentUserRole) {
     state.currentUserRole = "customer";
   }
-  state.activities = [
-    {
-      id: makeId("activity"),
-      title: `Sukurta rezervacija: ${booking.salonName}`,
-      meta: `${booking.date} ${booking.time} | ${booking.serviceName} | ${formatPaymentLabel(booking.paymentMethod)}`,
-      tone: "success",
-      createdAt: booking.createdAt,
-    },
-    ...state.activities,
-  ].slice(0, 10);
 
   state.workspace = "customer";
-  refs.bookingMessage.textContent =
-    booking.paymentMethod === "onsite"
-      ? "Rezervacija sukurta, uzstatas uzfiksuotas."
-      : "Rezervacija ir apmokejimas patvirtinti.";
+  state.bookingContext = null;
 
   persistState();
   renderAll();
+  scrollToWorkspace();
 
   window.setTimeout(() => {
     closeDialog(refs.bookingModal);
+    state.bookingDraft = null;
+    state.bookingStep = 1;
   }, 1100);
+}
+
+function handleWorkspaceBookingAction(action, bookingId) {
+  if (action === "repeat") {
+    startBookingRepeat(bookingId);
+    return;
+  }
+
+  if (action === "reschedule") {
+    startBookingEdit(bookingId);
+    return;
+  }
+
+  if (action === "confirm") {
+    confirmManagedBooking(bookingId);
+    return;
+  }
+
+  if (action === "complete") {
+    completeManagedBooking(bookingId);
+    return;
+  }
+
+  if (action === "cancel") {
+    cancelManagedBooking(bookingId);
+  }
+}
+
+function startBookingRepeat(bookingId) {
+  const booking = getBookingById(bookingId);
+  if (!booking) {
+    return;
+  }
+
+  state.bookingDraft = createBookingDraftFromBooking(booking);
+  state.bookingContext = { mode: "repeat", bookingId };
+  state.bookingStep = 1;
+  refs.bookingMessage.textContent = "";
+  renderBookingFlow();
+  openDialog(refs.bookingModal);
+}
+
+function startBookingEdit(bookingId) {
+  const booking = getBookingById(bookingId);
+  if (!booking || !canRescheduleBooking(booking)) {
+    return;
+  }
+
+  state.bookingDraft = createBookingDraftFromBooking(booking, { preserveTime: true });
+  state.bookingContext = { mode: "edit", bookingId };
+  state.bookingStep = 2;
+  refs.bookingMessage.textContent = "";
+  renderBookingFlow();
+  openDialog(refs.bookingModal);
+}
+
+function confirmManagedBooking(bookingId) {
+  const booking = getBookingById(bookingId);
+  if (!booking || booking.status !== "Uzstatas") {
+    return;
+  }
+
+  updateManagedBooking(
+    bookingId,
+    { status: "Patvirtinta" },
+    {
+      title: `Patvirtinta rezervacija: ${booking.salonName}`,
+      meta: `${booking.customerName} | ${formatDateLabel(booking.date)} ${booking.time}`,
+      tone: "success",
+    }
+  );
+}
+
+function completeManagedBooking(bookingId) {
+  const booking = getBookingById(bookingId);
+  if (!booking || isClosedBooking(booking) || getBookingTimestamp(booking) > Date.now()) {
+    return;
+  }
+
+  updateManagedBooking(
+    bookingId,
+    { status: "Ivykdyta" },
+    {
+      title: `Uzbaigta rezervacija: ${booking.salonName}`,
+      meta: `${booking.customerName} | ${booking.serviceName}`,
+      tone: "info",
+    }
+  );
+}
+
+function cancelManagedBooking(bookingId) {
+  const booking = getBookingById(bookingId);
+  if (!booking || isClosedBooking(booking)) {
+    return;
+  }
+
+  updateManagedBooking(
+    bookingId,
+    { status: "Atsaukta" },
+    {
+      title: `Atsaukta rezervacija: ${booking.salonName}`,
+      meta: `${booking.customerName} | ${formatDateLabel(booking.date)} ${booking.time}`,
+      tone: "warning",
+    }
+  );
+}
+
+function updateManagedBooking(bookingId, patch, activity) {
+  const booking = getBookingById(bookingId);
+  if (!booking) {
+    return;
+  }
+
+  const nextBooking = normalizeBooking({
+    ...booking,
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  });
+  const payment = buildPaymentRecordForBooking(nextBooking, getPaymentByBookingId(nextBooking.id));
+
+  state.bookings = state.bookings.map((item) => (item.id === bookingId ? nextBooking : item));
+  state.payments = upsertPaymentRecord(state.payments, payment);
+  pushActivityEntry(activity.title, activity.meta, activity.tone);
+  persistAndRender();
+}
+
+function buildPaymentRecordForBooking(booking, existingPayment = null) {
+  return {
+    id: existingPayment?.id || makeId("payment"),
+    bookingId: booking.id,
+    amount: booking.paymentAmount,
+    method: booking.paymentMethod,
+    status: getPaymentStatusFromBooking(booking),
+    label: booking.serviceName,
+    createdAt: existingPayment?.createdAt || booking.createdAt,
+    updatedAt: booking.updatedAt || booking.createdAt,
+  };
+}
+
+function upsertPaymentRecord(payments, nextPayment) {
+  const exists = payments.some((payment) => payment.id === nextPayment.id);
+  return exists ? payments.map((payment) => (payment.id === nextPayment.id ? nextPayment : payment)) : [nextPayment, ...payments];
+}
+
+function pushActivityEntry(title, meta, tone = "info") {
+  state.activities = [
+    {
+      id: makeId("activity"),
+      title,
+      meta,
+      tone,
+      createdAt: new Date().toISOString(),
+    },
+    ...state.activities,
+  ].slice(0, 12);
 }
 
 function loginAs(role) {
@@ -2039,6 +2527,10 @@ function loginAs(role) {
   persistState();
   renderAll();
   closeDialog(refs.authModal);
+
+  if (role === "customer") {
+    scrollToWorkspace();
+  }
 }
 
 function logout() {
@@ -2060,8 +2552,9 @@ function logout() {
   closeDialog(refs.authModal);
 }
 
-function openBooking(salonId, serviceId = "", selectedTime = "") {
+function openBooking(salonId, serviceId = "", selectedTime = "", context = null) {
   state.bookingDraft = createBookingDraft(salonId, serviceId, selectedTime);
+  state.bookingContext = context || { mode: "create", bookingId: null };
   state.bookingStep = selectedTime ? 2 : 1;
   refs.bookingMessage.textContent = "";
   renderBookingFlow();
@@ -2070,8 +2563,13 @@ function openBooking(salonId, serviceId = "", selectedTime = "") {
 
 function renderAll() {
   syncControls();
+  renderSearchSuggestions();
+  renderSearchDatePanel();
   renderHeroTotals();
-  renderSalons();
+  renderResultsVisibility();
+  if (state.showResults) {
+    renderSalons();
+  }
   renderWorkspace();
   renderSideRail();
   renderSessionLabel();
@@ -2079,6 +2577,15 @@ function renderAll() {
   if (state.bookingDraft) {
     renderBookingFlow();
   }
+}
+
+function renderResultsVisibility() {
+  if (!refs.resultsSection) {
+    return;
+  }
+
+  refs.resultsSection.hidden = !state.showResults;
+  refs.resultsSection.setAttribute("aria-hidden", String(!state.showResults));
 }
 
 function renderHeroTotals() {
@@ -2098,7 +2605,6 @@ function renderHeroTotals() {
 function renderSalonCard(salon, index, activeDate) {
   const nextSlots = getAvailableSlots(salon.id, activeDate).slice(0, 3);
   const topServices = salon.services.slice(0, 3);
-  const selectedSpecialist = getSelectedSalonSpecialist(salon);
 
   return `
     <article class="salon-card reveal" style="animation-delay:${Math.min(index * 80, 320)}ms">
@@ -2120,29 +2626,6 @@ function renderSalonCard(salon, index, activeDate) {
 
         <div class="feature-tags">
           ${salon.features.map((feature) => `<span class="feature-tag">${feature}</span>`).join("")}
-        </div>
-
-        <div class="specialist-selector">
-          <p class="status-label">Pasirink meistra</p>
-          <div class="specialist-picker">
-            ${salon.specialists
-              .map((specialist) => {
-                const isActive = specialist.id === selectedSpecialist.id;
-                return `
-                  <button
-                    type="button"
-                    class="specialist-option ${isActive ? "active" : ""}"
-                    data-select-specialist
-                    data-salon-specialist="${salon.id}"
-                    data-specialist-id="${specialist.id}"
-                  >
-                    <span>${specialist.name}</span>
-                    <small>${specialist.role}</small>
-                  </button>
-                `;
-              })
-              .join("")}
-          </div>
         </div>
 
         <div class="service-list">
@@ -2169,22 +2652,6 @@ function renderSalonCard(salon, index, activeDate) {
       </div>
 
       <div class="salon-side">
-        <article class="specialist-spotlight">
-          <img
-            class="specialist-spotlight-avatar"
-            src="${selectedSpecialist.photo}"
-            alt="${selectedSpecialist.name}"
-            loading="lazy"
-            referrerpolicy="no-referrer"
-          />
-          <div class="specialist-spotlight-copy">
-            <small class="muted">Pasirinktas meistras</small>
-            <strong>${selectedSpecialist.name}</strong>
-            <span class="specialist-role">${selectedSpecialist.role}</span>
-            <p>${selectedSpecialist.bio}</p>
-          </div>
-        </article>
-
         <div class="booking-summary-card">
           <div class="list-row">
             <strong>${salon.occupancy}%</strong>
@@ -2307,7 +2774,12 @@ function renderCustomerWorkspace() {
 
   const customer = profiles.customer;
   const bookings = getCustomerBookings(customer);
-  const payments = getCustomerPayments(customer);
+  const upcomingBookings = bookings.filter(isUpcomingBooking);
+  const bookingHistory = bookings
+    .filter((booking) => !upcomingBookings.some((item) => item.id === booking.id))
+    .sort(sortBookingsDescending);
+  const payments = getCustomerPayments(customer).sort(sortPaymentsDescending);
+  const lastRepeatableBooking = [...bookings].reverse().find((booking) => booking.status !== "Atsaukta");
 
   return `
     <section class="workspace-canvas">
@@ -2321,16 +2793,16 @@ function renderCustomerWorkspace() {
 
       <div class="stat-grid">
         <article class="stat-card">
-          <strong>${bookings.length}</strong>
+          <strong>${upcomingBookings.length}</strong>
           <span>aktyvios rezervacijos</span>
         </article>
         <article class="stat-card">
-          <strong>${sumAmounts(payments)} EUR</strong>
-          <span>isleista per paskyra</span>
+          <strong>${upcomingBookings.reduce((sum, booking) => sum + booking.totalAmount, 0)} EUR</strong>
+          <span>planuojama verte</span>
         </article>
         <article class="stat-card">
-          <strong>${customer.favoriteSalons.length}</strong>
-          <span>issaugoti salonai</span>
+          <strong>${customer.loyaltyCredits}</strong>
+          <span>lojalumo taskai</span>
         </article>
       </div>
 
@@ -2339,11 +2811,15 @@ function renderCustomerWorkspace() {
           <div class="card-header">
             <div>
               <p class="eyebrow">Artimiausi vizitai</p>
-              <h4>Rezervaciju sarasas</h4>
+              <h4>Valdyk rezervacijas vienoje vietoje</h4>
             </div>
           </div>
-          <div class="list-stack">
-            ${bookings.length ? bookings.map(renderBookingRow).join("") : `<p>Nera artimiausiu rezervaciju.</p>`}
+          <div class="booking-card-grid">
+            ${
+              upcomingBookings.length
+                ? upcomingBookings.map((booking) => renderCustomerBookingCard(booking)).join("")
+                : `<p>Nera artimiausiu rezervaciju. Issirink salona ir susikurk pirma vizita.</p>`
+            }
           </div>
         </article>
 
@@ -2351,18 +2827,24 @@ function renderCustomerWorkspace() {
           <div class="card-header">
             <div>
               <p class="eyebrow">Greiti veiksmai</p>
-              <h4>Kita rezervacija</h4>
+              <h4>Pakartok arba rezervuok nauja</h4>
             </div>
           </div>
           <div class="list-stack">
             <div class="service-row">
               <span>
-                <strong>Pakartoti paskutine paslauga</strong><br />
-                <small class="muted">Balayage pas Luna Beauty House</small>
+                <strong>${lastRepeatableBooking ? "Pakartoti paskutine paslauga" : "Greita pradzia"}</strong><br />
+                <small class="muted">${
+                  lastRepeatableBooking
+                    ? `${lastRepeatableBooking.serviceName} pas ${lastRepeatableBooking.salonName}`
+                    : "Atsidaryk rezervacijos srauta ir issirink pirma vizita"
+                }</small>
               </span>
-              <button class="ghost-button" type="button" data-open-booking data-salon-id="luna" data-service-id="balayage">
-                Kartoti
-              </button>
+              ${
+                lastRepeatableBooking
+                  ? `<button class="ghost-button" type="button" data-booking-action="repeat" data-booking-id="${lastRepeatableBooking.id}">Kartoti</button>`
+                  : `<button class="ghost-button" type="button" data-open-booking data-salon-id="luna" data-service-id="balayage">Pradeti</button>`
+              }
             </div>
             <div class="service-row">
               <span>
@@ -2373,6 +2855,15 @@ function renderCustomerWorkspace() {
                 Imti laika
               </button>
             </div>
+            <div class="service-row">
+              <span>
+                <strong>Megstami salonai</strong><br />
+                <small class="muted">${customer.favoriteSalons.map((salonId) => getSalon(salonId).name).join(", ")}</small>
+              </span>
+              <button class="ghost-button" type="button" data-open-booking data-salon-id="${customer.favoriteSalons[0]}">
+                Rezervuoti
+              </button>
+            </div>
           </div>
         </article>
       </div>
@@ -2381,35 +2872,28 @@ function renderCustomerWorkspace() {
         <article class="panel-card">
           <div class="card-header">
             <div>
-              <p class="eyebrow">Mokejimu istorija</p>
-              <h4>Paskutiniai atsiskaitymai</h4>
+              <p class="eyebrow">Istorija</p>
+              <h4>Ankstesni vizitai ir atsaukimai</h4>
             </div>
           </div>
-          <div class="payments-list">
-            ${payments.length ? payments.map(renderPaymentRow).join("") : `<p>Nera mokejimu istorijos.</p>`}
+          <div class="booking-card-grid">
+            ${
+              bookingHistory.length
+                ? bookingHistory.slice(0, 6).map((booking) => renderCustomerBookingCard(booking, { history: true })).join("")
+                : `<p>Istorija dar tuscia. Po pirmo vizito cia matysi visus ankstesnius ir atsauktus laikus.</p>`
+            }
           </div>
         </article>
 
         <article class="panel-card">
           <div class="card-header">
             <div>
-              <p class="eyebrow">Lojalumas</p>
-              <h4>Kas paskatina grizti</h4>
+              <p class="eyebrow">Mokejimai</p>
+              <h4>Paskutiniai atsiskaitymai</h4>
             </div>
           </div>
-          <div class="bar-list">
-            <div class="bar-row">
-              <div class="list-row"><span>Kreditu panaudojimas</span><strong>72%</strong></div>
-              <div class="bar-track"><div class="bar-fill" style="width:72%"></div></div>
-            </div>
-            <div class="bar-row">
-              <div class="list-row"><span>Rezervacijos po 18:00</span><strong>48%</strong></div>
-              <div class="bar-track"><div class="bar-fill" style="width:48%"></div></div>
-            </div>
-            <div class="bar-row">
-              <div class="list-row"><span>Push priminimu atidarymai</span><strong>83%</strong></div>
-              <div class="bar-track"><div class="bar-fill" style="width:83%"></div></div>
-            </div>
+          <div class="payments-list">
+            ${payments.length ? payments.map(renderPaymentRow).join("") : `<p>Nera mokejimu istorijos.</p>`}
           </div>
         </article>
       </div>
@@ -2429,7 +2913,10 @@ function renderSalonWorkspace() {
   const manager = profiles.salon;
   const salon = getSalon(manager.salonId);
   const salonBookings = getSalonBookings(salon.id);
-  const todaysBookings = salonBookings.filter((booking) => booking.date === upcomingDates[0]);
+  const activeBookings = salonBookings.filter((booking) => !isClosedBooking(booking));
+  const todaysBookings = activeBookings.filter((booking) => booking.date === upcomingDates[0]);
+  const pendingBookings = activeBookings.filter((booking) => booking.status === "Uzstatas");
+  const nextBookings = activeBookings.filter(isUpcomingBooking).slice(0, 6);
   const salonPayments = state.payments.filter((payment) =>
     salonBookings.some((booking) => booking.id === payment.bookingId)
   );
@@ -2450,12 +2937,12 @@ function renderSalonWorkspace() {
           <span>siandienos rezervacijos</span>
         </article>
         <article class="stat-card">
-          <strong>${sumAmounts(salonPayments)} EUR</strong>
-          <span>surinkta per demo</span>
+          <strong>${pendingBookings.length}</strong>
+          <span>laukia patvirtinimo</span>
         </article>
         <article class="stat-card">
-          <strong>${salon.repeatRate}%</strong>
-          <span>griztantys klientai</span>
+          <strong>${sumAmounts(salonPayments)} EUR</strong>
+          <span>surinkta per demo</span>
         </article>
       </div>
 
@@ -2464,35 +2951,31 @@ function renderSalonWorkspace() {
           <div class="card-header">
             <div>
               <p class="eyebrow">Tvarkarastis</p>
-              <h4>${formatDateLabel(upcomingDates[0])}</h4>
+              <h4>${formatDateLabel(upcomingDates[0])} rezervacijos</h4>
             </div>
           </div>
-          <div class="list-stack">
-            ${todaysBookings.length ? todaysBookings.map(renderBookingRow).join("") : `<p>Siandien dar yra laisvu langu.</p>`}
+          <div class="booking-card-grid compact">
+            ${
+              todaysBookings.length
+                ? todaysBookings.map((booking) => renderSalonBookingCard(booking)).join("")
+                : `<p>Siandien dar yra laisvu langu. Gali paleisti akcija paskutines minutes slotams.</p>`
+            }
           </div>
         </article>
 
         <article class="panel-card">
           <div class="card-header">
             <div>
-              <p class="eyebrow">Komandos apkrova</p>
-              <h4>Specialistai</h4>
+              <p class="eyebrow">Artimiausi klientai</p>
+              <h4>Kas atvyksta artimiausiai</h4>
             </div>
           </div>
-          <div class="bar-list">
-            ${salon.specialists
-              .map((specialist) => {
-                return `
-                  <div class="bar-row">
-                    <div class="list-row">
-                      <span>${specialist.name} / ${specialist.role}</span>
-                      <strong>${specialist.load}%</strong>
-                    </div>
-                    <div class="bar-track"><div class="bar-fill" style="width:${specialist.load}%"></div></div>
-                  </div>
-                `;
-              })
-              .join("")}
+          <div class="booking-card-grid compact">
+            ${
+              nextBookings.length
+                ? nextBookings.map((booking) => renderSalonBookingCard(booking, { compact: true })).join("")
+                : `<p>Kol kas nera aktyviu rezervaciju.</p>`
+            }
           </div>
         </article>
       </div>
@@ -2526,25 +3009,24 @@ function renderSalonWorkspace() {
         <article class="panel-card">
           <div class="card-header">
             <div>
-              <p class="eyebrow">Veiksmai</p>
-              <h4>Laisvu langu uzpildymas</h4>
+              <p class="eyebrow">Komandos apkrova</p>
+              <h4>Specialistu uzimtumas</h4>
             </div>
           </div>
-          <div class="list-stack">
-            <div class="service-row">
-              <span>
-                <strong>Akcija 14:15 langui</strong><br />
-                <small class="muted">Pasiulyk -10% push auditorijai netoliese.</small>
-              </span>
-              <span class="status-chip info">Rekomenduojama</span>
-            </div>
-            <div class="service-row">
-              <span>
-                <strong>Pakartotiniu klienciu srautas</strong><br />
-                <small class="muted">Issiusti "book again" pasiulyma 47 klientei.</small>
-              </span>
-              <span class="status-chip">Paruosta</span>
-            </div>
+          <div class="bar-list">
+            ${salon.specialists
+              .map((specialist) => {
+                return `
+                  <div class="bar-row">
+                    <div class="list-row">
+                      <span>${specialist.name} / ${specialist.role}</span>
+                      <strong>${specialist.load}%</strong>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill" style="width:${specialist.load}%"></div></div>
+                  </div>
+                `;
+              })
+              .join("")}
           </div>
         </article>
       </div>
@@ -2747,6 +3229,7 @@ function renderSessionLabel() {
   refs.sessionLabel.textContent = currentUser
     ? `${formatRoleLabel(currentUser.role)}: ${currentUser.name}`
     : "Neprisijungta";
+  refs.sessionLabel.classList.toggle("session-label-hidden", !currentUser);
 }
 
 function renderActiveStates() {
@@ -2768,12 +3251,17 @@ function renderBookingFlow() {
     return;
   }
 
+  const bookingContext = state.bookingContext || { mode: "create", bookingId: null };
+  const editingBookingId = bookingContext.mode === "edit" ? bookingContext.bookingId : "";
   const salon = getSalon(state.bookingDraft.salonId);
   const service = getService(salon, state.bookingDraft.serviceId);
   const specialist = getSpecialist(salon, state.bookingDraft.specialistId);
 
-  refs.bookingTitle.textContent = `Rezervuok ${salon.name}`;
-  refs.bookingSubtitle.textContent = `${salon.city} | ${salon.category} | nuo ${salon.priceFrom} EUR`;
+  refs.bookingTitle.textContent = bookingContext.mode === "edit" ? `Perplanuok ${salon.name}` : `Rezervuok ${salon.name}`;
+  refs.bookingSubtitle.textContent =
+    bookingContext.mode === "edit"
+      ? `${salon.city} | ${salon.category} | pakeisk data, laika arba mokejima`
+      : `${salon.city} | ${salon.category} | nuo ${salon.priceFrom} EUR`;
 
   refs.bookingService.innerHTML = salon.services
     .map((item) => {
@@ -2797,7 +3285,7 @@ function renderBookingFlow() {
     })
     .join("");
 
-  const availableSlots = getAvailableSlots(salon.id, state.bookingDraft.date);
+  const availableSlots = getAvailableSlots(salon.id, state.bookingDraft.date, editingBookingId);
   if (!availableSlots.includes(state.bookingDraft.time)) {
     state.bookingDraft.time = "";
   }
@@ -2903,18 +3391,145 @@ function renderGuard(title, description, buttonLabel) {
   `;
 }
 
-function renderBookingRow(booking) {
-  const statusClass =
-    booking.status === "Uzstatas" ? "warning" : booking.status === "Patvirtinta" ? "" : "info";
+function renderCustomerBookingCard(booking, options = {}) {
+  const salon = getSalon(booking.salonId);
+  const payment = getPaymentByBookingId(booking.id);
+  const showManagement = !options.history && isUpcomingBooking(booking);
 
+  return `
+    <article class="booking-card">
+      <div class="booking-card-header">
+        <div>
+          <div class="booking-card-title">
+            <strong>${booking.serviceName}</strong>
+            <span class="booking-code">${booking.code}</span>
+          </div>
+          <p>${booking.salonName} su ${booking.specialistName}</p>
+        </div>
+        <span class="status-chip ${getBookingStatusClass(booking.status)}">${booking.status}</span>
+      </div>
+
+      <div class="booking-detail-grid">
+        <div>
+          <span>Data</span>
+          <strong>${formatDateLabel(booking.date)} ${booking.time}</strong>
+        </div>
+        <div>
+          <span>Vieta</span>
+          <strong>${salon.city}, ${salon.neighborhood}</strong>
+        </div>
+        <div>
+          <span>Mokejimas</span>
+          <strong>${formatPaymentLabel(booking.paymentMethod)}</strong>
+        </div>
+        <div>
+          <span>Suma</span>
+          <strong>${booking.totalAmount} EUR</strong>
+        </div>
+      </div>
+
+      ${
+        payment
+          ? `
+            <div class="booking-inline-meta">
+              <span>${payment.status}</span>
+              <span>${payment.amount} EUR</span>
+            </div>
+          `
+          : ""
+      }
+
+      <div class="booking-card-actions">
+        ${
+          showManagement
+            ? `
+              <button class="ghost-button" type="button" data-booking-action="reschedule" data-booking-id="${booking.id}">
+                Perplanuoti
+              </button>
+              <button class="ghost-button" type="button" data-booking-action="cancel" data-booking-id="${booking.id}">
+                Atsaukti
+              </button>
+            `
+            : ""
+        }
+        <button class="primary-button" type="button" data-booking-action="repeat" data-booking-id="${booking.id}">
+          Kartoti
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+function renderSalonBookingCard(booking, options = {}) {
+  const compactClass = options.compact ? " compact" : "";
+  const canConfirm = booking.status === "Uzstatas";
+  const canComplete = !isClosedBooking(booking) && getBookingTimestamp(booking) <= Date.now();
+  const canCancel = canCancelBooking(booking);
+
+  return `
+    <article class="booking-card${compactClass}">
+      <div class="booking-card-header">
+        <div>
+          <div class="booking-card-title">
+            <strong>${booking.customerName}</strong>
+            <span class="booking-code">${booking.code}</span>
+          </div>
+          <p>${booking.serviceName} su ${booking.specialistName}</p>
+        </div>
+        <span class="status-chip ${getBookingStatusClass(booking.status)}">${booking.status}</span>
+      </div>
+
+      <div class="booking-detail-grid">
+        <div>
+          <span>Laikas</span>
+          <strong>${formatDateLabel(booking.date)} ${booking.time}</strong>
+        </div>
+        <div>
+          <span>Kontaktas</span>
+          <strong>${booking.customerPhone}</strong>
+        </div>
+        <div>
+          <span>Mokejimas</span>
+          <strong>${formatPaymentLabel(booking.paymentMethod)}</strong>
+        </div>
+        <div>
+          <span>Verte</span>
+          <strong>${booking.totalAmount} EUR</strong>
+        </div>
+      </div>
+
+      ${booking.notes ? `<div class="booking-inline-meta"><span>Pastaba</span><span>${booking.notes}</span></div>` : ""}
+
+      <div class="booking-card-actions">
+        ${
+          canConfirm
+            ? `<button class="ghost-button" type="button" data-booking-action="confirm" data-booking-id="${booking.id}">Patvirtinti</button>`
+            : ""
+        }
+        ${
+          canComplete
+            ? `<button class="ghost-button" type="button" data-booking-action="complete" data-booking-id="${booking.id}">Uzbaigti</button>`
+            : ""
+        }
+        ${
+          canCancel
+            ? `<button class="ghost-button" type="button" data-booking-action="cancel" data-booking-id="${booking.id}">Atsaukti</button>`
+            : ""
+        }
+      </div>
+    </article>
+  `;
+}
+
+function renderBookingRow(booking) {
   return `
     <div class="booking-row">
       <div class="booking-row-meta">
-        <strong>${booking.salonName}</strong>
+        <strong>${booking.salonName} <span class="booking-code inline">${booking.code}</span></strong>
         <span class="muted">${booking.serviceName} su ${booking.specialistName}</span>
         <span class="muted">${formatDateLabel(booking.date)} ${booking.time}</span>
       </div>
-      <span class="status-chip ${statusClass}">${booking.status}</span>
+      <span class="status-chip ${getBookingStatusClass(booking.status)}">${booking.status}</span>
     </div>
   `;
 }
@@ -2987,6 +3602,14 @@ function getSalonBookings(salonId) {
   return state.bookings.filter((booking) => booking.salonId === salonId).sort(sortBookings);
 }
 
+function getBookingById(bookingId) {
+  return state.bookings.find((booking) => booking.id === bookingId);
+}
+
+function getPaymentByBookingId(bookingId) {
+  return state.payments.find((payment) => payment.bookingId === bookingId);
+}
+
 function getCityBookingCounts() {
   return state.bookings.reduce((accumulator, booking) => {
     const salon = getSalon(booking.salonId);
@@ -2995,11 +3618,17 @@ function getCityBookingCounts() {
   }, {});
 }
 
-function getAvailableSlots(salonId, date) {
+function getAvailableSlots(salonId, date, excludedBookingId = "") {
   const salon = getSalon(salonId);
   const reserved = new Set(
     state.bookings
-      .filter((booking) => booking.salonId === salonId && booking.date === date)
+      .filter(
+        (booking) =>
+          booking.salonId === salonId &&
+          booking.date === date &&
+          booking.id !== excludedBookingId &&
+          bookingBlocksSlot(booking)
+      )
       .map((booking) => booking.time)
   );
 
@@ -3027,10 +3656,35 @@ function createBookingDraft(salonId, serviceId, selectedTime) {
   };
 }
 
+function createBookingDraftFromBooking(booking, options = {}) {
+  const preserveTime = Boolean(options.preserveTime);
+  const salon = getSalon(booking.salonId);
+  const chosenDate = upcomingDates.includes(booking.date) ? booking.date : getActiveResultsDate();
+  const availableSlots = getAvailableSlots(salon.id, chosenDate, preserveTime ? booking.id : "");
+
+  return {
+    salonId: salon.id,
+    serviceId: booking.serviceId,
+    specialistId: booking.specialistId,
+    date: chosenDate,
+    time: preserveTime && availableSlots.includes(booking.time) ? booking.time : "",
+    paymentMethod: booking.paymentMethod || "card",
+    customerName: booking.customerName || profiles.customer.name,
+    customerPhone: booking.customerPhone || profiles.customer.phone,
+    customerEmail: booking.customerEmail || profiles.customer.email,
+    notes: booking.notes || "",
+  };
+}
+
 function populateDateFilterOptions() {
+  const selectableDates = [...upcomingDates];
+  if (state.filters.date !== "any" && !selectableDates.includes(state.filters.date)) {
+    selectableDates.push(state.filters.date);
+  }
+
   refs.dateSelect.innerHTML = `
     <option value="any">Data nesvarbu</option>
-    ${upcomingDates
+    ${selectableDates
       .map((date) => `<option value="${date}">${formatDateLabel(date)}</option>`)
       .join("")}
   `;
@@ -3107,35 +3761,79 @@ function persistState() {
     bookings: state.bookings,
     payments: state.payments,
     activities: state.activities,
+    recentQueries: state.recentQueries,
     selectedSpecialists: state.selectedSpecialists,
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
 }
 
+function scrollToResults() {
+  if (!refs.resultsSection) {
+    return;
+  }
+
+  refs.resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function scrollToWorkspace() {
+  if (!refs.workspaceSection) {
+    return;
+  }
+
+  refs.workspaceSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function loadState() {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    return cloneState(defaultState);
+    return normalizeStateShape(cloneState(defaultState));
   }
 
   try {
     const parsed = JSON.parse(raw);
-    return {
+    return normalizeStateShape({
       ...cloneState(defaultState),
       ...parsed,
       filters: {
         ...defaultState.filters,
         ...(parsed.filters || {}),
       },
-    };
+    });
   } catch (error) {
-    return cloneState(defaultState);
+    return normalizeStateShape(cloneState(defaultState));
   }
+}
+
+function normalizeStateShape(sourceState) {
+  const bookings = (sourceState.bookings || []).map(normalizeBooking);
+  const payments =
+    sourceState.payments && sourceState.payments.length
+      ? normalizePayments(sourceState.payments, bookings)
+      : bookings.map((booking) => buildPaymentRecordForBooking(booking));
+
+  return {
+    ...sourceState,
+    bookings,
+    payments,
+    activities: Array.isArray(sourceState.activities) ? sourceState.activities : cloneState(defaultState.activities),
+    bookingDraft: null,
+    bookingContext: null,
+    bookingStep: 1,
+  };
 }
 
 function cloneState(source) {
   return JSON.parse(JSON.stringify(source));
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function formatDateLabel(dateString) {
@@ -3187,14 +3885,112 @@ function sumAmounts(items) {
   return items.reduce((sum, item) => sum + Number(item.amount || item.paymentAmount || 0), 0);
 }
 
+function getBookingTimestamp(booking) {
+  return new Date(`${booking.date}T${booking.time || "00:00"}:00`).getTime();
+}
+
+function isClosedBooking(booking) {
+  return ["Atsaukta", "Ivykdyta", "Neatvyko"].includes(booking.status);
+}
+
+function isUpcomingBooking(booking) {
+  return !isClosedBooking(booking) && getBookingTimestamp(booking) >= Date.now();
+}
+
+function canRescheduleBooking(booking) {
+  return !isClosedBooking(booking) && getBookingTimestamp(booking) >= Date.now();
+}
+
+function canCancelBooking(booking) {
+  return !isClosedBooking(booking) && getBookingTimestamp(booking) >= Date.now();
+}
+
+function bookingBlocksSlot(booking) {
+  return !isClosedBooking(booking);
+}
+
+function getBookingStatusClass(status) {
+  if (status === "Uzstatas") {
+    return "warning";
+  }
+
+  if (status === "Atsaukta") {
+    return "danger";
+  }
+
+  if (status === "Ivykdyta" || status === "Neatvyko") {
+    return "info";
+  }
+
+  return "";
+}
+
+function getPaymentStatusFromBooking(booking) {
+  if (booking.status === "Atsaukta") {
+    return booking.paymentMethod === "onsite" ? "Uzstatas grazintas" : "Grazinta";
+  }
+
+  if (booking.status === "Ivykdyta") {
+    return booking.paymentMethod === "onsite" ? "Apmoketa salone" : "Apmoketa";
+  }
+
+  return booking.paymentMethod === "onsite" ? "Uzstatas" : "Apmoketa";
+}
+
+function normalizeBooking(booking) {
+  const createdAt = booking.createdAt || new Date().toISOString();
+
+  return {
+    ...booking,
+    code: booking.code || makeBookingCode(booking.id),
+    notes: booking.notes || "",
+    status: booking.status || "Patvirtinta",
+    createdAt,
+    updatedAt: booking.updatedAt || createdAt,
+  };
+}
+
+function normalizePayments(payments, bookings) {
+  return payments.map((payment) => {
+    const booking = bookings.find((item) => item.id === payment.bookingId);
+    const createdAt = payment.createdAt || booking?.createdAt || new Date().toISOString();
+
+    return {
+      ...payment,
+      method: payment.method || booking?.paymentMethod || "card",
+      amount: Number(payment.amount ?? booking?.paymentAmount ?? 0),
+      label: payment.label || booking?.serviceName || "Paslauga",
+      status: booking
+        ? getPaymentStatusFromBooking({
+            ...booking,
+            paymentMethod: payment.method || booking.paymentMethod,
+          })
+        : payment.status || "Apmoketa",
+      createdAt,
+      updatedAt: payment.updatedAt || createdAt,
+    };
+  });
+}
+
 function sortBookings(left, right) {
-  const leftStamp = new Date(`${left.date}T${left.time}:00`).getTime();
-  const rightStamp = new Date(`${right.date}T${right.time}:00`).getTime();
-  return leftStamp - rightStamp;
+  return getBookingTimestamp(left) - getBookingTimestamp(right);
+}
+
+function sortBookingsDescending(left, right) {
+  return getBookingTimestamp(right) - getBookingTimestamp(left);
+}
+
+function sortPaymentsDescending(left, right) {
+  return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
 }
 
 function toIsoDate(date) {
   return date.toISOString().split("T")[0];
+}
+
+function makeBookingCode(source) {
+  const normalized = String(source || Date.now()).replace(/[^a-z0-9]/gi, "").toUpperCase();
+  return `LZ-${normalized.slice(-6).padStart(6, "0")}`;
 }
 
 function makeId(prefix) {

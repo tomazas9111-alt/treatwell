@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lai&#382;yklel&#279; | Grozio rezervacijos internetu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <meta
       name="description"
       content="Treatwell tipo ikveptas grozio rezervaciju puslapis su Lai&#382;yklel&#279; brandu ir originaliu kodu."
@@ -433,33 +439,100 @@
             </p>
 
             <form class="search-panel search-panel-visual" id="search-form">
-              <label class="search-field">
+              <div class="search-query-group" id="search-query-group">
+                <label class="search-field search-field-query">
                 <span class="search-icon">⌕</span>
                 <input
                   id="query-input"
                   type="text"
-                  value="Nagai"
+                  autocomplete="off"
+                  aria-haspopup="true"
+                  aria-expanded="false"
                   placeholder="Ieskoti proceduru / salonu"
                 />
-              </label>
+                </label>
 
-              <label class="search-field">
+                <div class="search-suggestions" id="search-suggestions" aria-hidden="true">
+                  <section class="search-suggestions-section" id="recent-searches-section">
+                    <h3>Tavo paskutin&#279; paie&#353;ka</h3>
+                  <div class="search-recent-list" id="recent-search-list"></div>
+                </section>
+
+                <section class="search-suggestions-section">
+                  <h3>Populiariausios paie&#353;kos</h3>
+                  <div class="search-chip-list">
+                    <button class="search-chip" type="button" data-search-term="Plaukai">Plaukai</button>
+                    <button class="search-chip" type="button" data-search-term="Nagai">Nagai</button>
+                    <button class="search-chip" type="button" data-search-term="Depiliacija">Depiliacija</button>
+                    <button class="search-chip" type="button" data-search-term="Masazas">Masa&#382;as</button>
+                    <button class="search-chip" type="button" data-search-term="Veidas">Veidas</button>
+                    <button class="search-chip" type="button" data-search-term="Kunas">K&#363;nas</button>
+                    <button class="search-chip" type="button" data-search-term="Vyrams">Vyrams</button>
+                  </div>
+                </section>
+                </div>
+              </div>
+
+              <label class="search-field search-field-location">
                 <span class="search-icon">◎</span>
                 <input
                   id="location-input"
                   type="text"
-                  value="Vilnius"
                   placeholder="Ivesk miesta"
                   list="location-options"
                 />
               </label>
 
-              <label class="search-field">
+              <div class="search-date-group" id="search-date-group">
+              <label
+                class="search-field search-field-date search-date-trigger"
+                id="date-trigger"
+                tabindex="0"
+                role="button"
+                aria-haspopup="true"
+                aria-expanded="false"
+              >
                 <span class="search-icon">◫</span>
-                <select id="date-select">
+                <span class="search-date-label" id="date-display">Data nesvarbu</span>
+                <select id="date-select" hidden tabindex="-1">
                   <option value="any">Data nesvarbu</option>
                 </select>
               </label>
+
+              <div class="search-date-panel" id="search-date-panel" aria-hidden="true">
+                <div class="search-date-header">
+                  <span class="search-icon search-icon-calendar" aria-hidden="true"></span>
+                  <h3>Pasirinkti dat&#261;</h3>
+                </div>
+
+                <div class="search-date-actions">
+                  <button class="search-date-option" type="button" data-date-option="any">Data nesvarbu</button>
+                  <button class="search-date-option" type="button" data-date-option="today">&#352;iandien</button>
+                  <button class="search-date-option" type="button" data-date-option="tomorrow">Rytoj</button>
+                </div>
+
+                <label class="search-date-picker">
+                  <span>Pasirinkti dat&#261;</span>
+                  <input id="custom-date-input" type="date" />
+                </label>
+
+                <div class="search-date-header search-time-header">
+                  <span class="search-icon search-icon-clock" aria-hidden="true"></span>
+                  <h3>Pasirink laik&#261;</h3>
+                </div>
+
+                <div class="search-date-helper">&#302;vesk dat&#261; ir laik&#261;</div>
+
+                <label class="search-time-picker">
+                  <span id="time-display">Pasirink laik&#261;...</span>
+                  <input id="time-input" type="time" />
+                </label>
+
+                <button class="primary-button search-button block search-date-submit" type="submit">
+                  Ie&#353;koti
+                </button>
+              </div>
+              </div>
 
               <button class="primary-button search-button block" type="submit">
                 Ieskoti
@@ -631,7 +704,7 @@
           </div>
         </section>
 
-        <section class="results-section" id="salons">
+        <section class="results-section" id="salons" hidden>
           <div class="results-toolbar reveal">
             <div>
               <p class="eyebrow">Atrinkti salonai</p>
